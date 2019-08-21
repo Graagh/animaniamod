@@ -2,8 +2,10 @@ package com.animania.config;
 
 import java.io.File;
 import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.stream.Stream;
 
 import com.animania.Animania;
 import com.animania.common.helper.ReflectionUtil;
@@ -19,66 +21,73 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 @Config(modid = Animania.MODID)
 public class AnimaniaConfig
 {
-    @Config.LangKey("Animania")
+	@Config.LangKey("Animania")
+	public static CommonConfig.GameRules gameRules = new CommonConfig.GameRules();
+//	public static CommonConfig.Drops drops = new CommonConfig.Drops();
+	public static CommonConfig.Spawn spawn = new CommonConfig.Spawn();
+	@Config.RequiresMcRestart
+	public static CommonConfig.SpawnLocations spawnLocations = new CommonConfig.SpawnLocations();
+	public static CommonConfig.CareAndFeeding careAndFeeding = new CommonConfig.CareAndFeeding();
+	public static CommonConfig.FoodValues foodValues = new CommonConfig.FoodValues();
 
-    public static CommonConfig.GameRules      gameRules      = new CommonConfig.GameRules();
-    public static CommonConfig.Drops          drops          = new CommonConfig.Drops();
-    public static CommonConfig.Spawn          spawn          = new CommonConfig.Spawn();
-    public static CommonConfig.CareAndFeeding careAndFeeding = new CommonConfig.CareAndFeeding();
-    public static CommonConfig.FoodValues 	  foodValues 	 = new CommonConfig.FoodValues();
+	@Mod.EventBusSubscriber(modid = Animania.MODID)
+	public static class EventHandler
+	{
 
-    @Mod.EventBusSubscriber(modid = Animania.MODID)
-    public static class EventHandler
-    {
+		/**
+		 * The {@link Configuration} instance.
+		 */
+		private static List<Configuration> configuration;
 
-        /**
-         * The {@link ConfigManager#CONFIGS} getter.
-         */
-        private static final MethodHandle CONFIGS_GETTER = ReflectionUtil.findFieldGetter(ConfigManager.class, "CONFIGS");
+		/**
+		 * Get the {@link Configuration} instance from {@link ConfigManager}.
+		 * <p>
+		 * TODO: Use a less hackish method of getting the
+		 * {@link Configuration}/{@link IConfigElement}s when possible.
+		 *
+		 * @return The Configuration instance
+		 */
+		public static List<Configuration> getConfiguration()
+		{
+			if (EventHandler.configuration == null)
+				try
+				{
+					
+					List<Configuration> cfgs = new ArrayList<Configuration>();
+					
+					@SuppressWarnings("unchecked")
+					final Map<String, Configuration> configsMap = (Map<String, Configuration>) ReflectionUtil.findField(ConfigManager.class, "CONFIGS").get(null);
 
-        /**
-         * The {@link Configuration} instance.
-         */
-        private static Configuration      configuration;
+					final Stream<Map.Entry<String, Configuration>> entries = configsMap.entrySet().stream().filter(entry -> entry.getKey().substring(entry.getKey().lastIndexOf(File.separator), entry.getKey().length()-1).contains(Animania.MODID));
 
-        /**
-         * Get the {@link Configuration} instance from {@link ConfigManager}.
-         * <p>
-         * TODO: Use a less hackish method of getting the
-         * {@link Configuration}/{@link IConfigElement}s when possible.
-         *
-         * @return The Configuration instance
-         */
-        public static Configuration getConfiguration() {
-            if (EventHandler.configuration == null)
-                try {
-                    final String fileName = Animania.MODID + ".cfg";
+					entries.forEach(entry -> cfgs.add(entry.getValue()));
+//					entries.ifPresent(stringConfigurationEntry -> EventHandler.configuration = stringConfigurationEntry.getValue());
+				
+					configuration = cfgs;
+				}
+				catch (Throwable throwable)
+				{
+					throwable.printStackTrace();
+				}
 
-                    @SuppressWarnings("unchecked")
-                    final Map<String, Configuration> configsMap = (Map<String, Configuration>) EventHandler.CONFIGS_GETTER.invokeExact();
+			return EventHandler.configuration;
+		}
 
-                    final Optional<Map.Entry<String, Configuration>> entryOptional = configsMap.entrySet().stream()
-                            .filter(entry -> fileName.equals(new File(entry.getKey()).getName())).findFirst();
-
-                    entryOptional.ifPresent(stringConfigurationEntry -> EventHandler.configuration = stringConfigurationEntry.getValue());
-                } catch (Throwable throwable) {
-                    throwable.printStackTrace();
-                }
-
-            return EventHandler.configuration;
-        }
-
-        /**
-         * Inject the new values and save to the config file when the config has
-         * been changed from the GUI.
-         *
-         * @param event
-         *            The event
-         */
-        @SubscribeEvent
-        public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
-            if (event.getModID().equals(Animania.MODID))
-                ConfigManager.load(Animania.MODID, Config.Type.INSTANCE);
-        }
-    }
+		/**
+		 * Inject the new values and save to the config file when the config has
+		 * been changed from the GUI.
+		 *
+		 * @param event
+		 *            The event
+		 */
+		@SubscribeEvent
+		public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event)
+		{
+			if (event.getModID().equals(Animania.MODID))
+			{
+				ConfigManager.load(Animania.MODID, Config.Type.INSTANCE);
+				Animania.proxy.reloadManual();
+			}
+		}
+	}
 }

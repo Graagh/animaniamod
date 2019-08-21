@@ -2,30 +2,32 @@ package com.animania.common.entities.chickens;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Random;
 
-import com.animania.common.entities.AnimaniaType;
+import com.animania.Animania;
+import com.animania.api.interfaces.AnimaniaType;
 
 import net.minecraft.world.World;
 
 public enum ChickenType implements AnimaniaType
 {
 	
-	LEGHORN(EntityRoosterLeghorn.class, EntityHenLeghorn.class, EntityChickLeghorn.class),
-	ORPINGTON(EntityRoosterOrpington.class, EntityHenOrpington.class, EntityChickOrpington.class),
-	PLYMOUTH_ROCK(EntityRoosterPlymouthRock.class, EntityHenPlymouthRock.class, EntityChickPlymouthRock.class),
-	RHODE_ISLAND_RED(EntityRoosterRhodeIslandRed.class, EntityHenRhodeIslandRed.class, EntityChickRhodeIslandRed.class),
-	WYANDOTTE(EntityRoosterWyandotte.class, EntityHenWyandotte.class, EntityChickWyandotte.class);
+	LEGHORN(EntityRoosterLeghorn.class, EntityHenLeghorn.class, EntityChickLeghorn.class, false),
+	ORPINGTON(EntityRoosterOrpington.class, EntityHenOrpington.class, EntityChickOrpington.class, true),
+	PLYMOUTH_ROCK(EntityRoosterPlymouthRock.class, EntityHenPlymouthRock.class, EntityChickPlymouthRock.class, true),
+	RHODE_ISLAND_RED(EntityRoosterRhodeIslandRed.class, EntityHenRhodeIslandRed.class, EntityChickRhodeIslandRed.class, true),
+	WYANDOTTE(EntityRoosterWyandotte.class, EntityHenWyandotte.class, EntityChickWyandotte.class, true);
 
 	private Class male;
 	private Class female;
 	private Class child;
+	public boolean isPrime;
 	
-	private ChickenType(Class male, Class female, Class child)
+	private ChickenType(Class male, Class female, Class child, boolean isPrime)
 	{
 		this.male = male;
 		this.female = female;
 		this.child = child;
+		this.isPrime = isPrime;
 	}
 	
 	@Override
@@ -102,11 +104,7 @@ public enum ChickenType implements AnimaniaType
 
 	public static ChickenType breed(ChickenType male, ChickenType female)
 	{
-		Random rand = new Random();
-		if(rand.nextInt(2) == 0)
-			return male;
-		else
-			return female;
+		return Animania.RANDOM.nextBoolean() ? male : female;
 	}
 
 }

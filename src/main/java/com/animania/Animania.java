@@ -1,10 +1,13 @@
 package com.animania;
 
+import java.util.Random;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.animania.common.creativeTab.TabAnimaniaEntities;
 import com.animania.common.creativeTab.TabAnimaniaResources;
+import com.animania.common.handler.AddonHandler;
 import com.animania.common.handler.GuiHandlerAnimania;
 import com.animania.proxy.CommonProxy;
 
@@ -35,19 +38,20 @@ public class Animania
 	public static Animania instance;
 
 	public static final String MODID = "animania";
-	public static final String VERSION = "1.4.7";
+	public static final String VERSION = "1.6.2";
 	public static final String NAME = "Animania";
 	public static final Logger LOGGER = LogManager.getFormatterLogger("Animania");
 	public final static String ACCEPTED_VERSIONS = "[1.12,1.13)";
-	//public static final String DEPENDENCIES = "required-after:craftstudioapi;after:quark;after:botania;after:biomesoplenty;required-after:forge@[14.23.2.2611,)";
-	public static final String DEPENDENCIES = "required-after:craftstudioapi;after:quark;after:botania;after:biomesoplenty;required-after:forge@[13.20.1.2386,)";
+	public static final String DEPENDENCIES = "required-after:craftstudioapi;before:zawa;after:cofhcore;after:harvestcraft;after:natura;after:botania;after:biomesoplenty;after:twilightforest;after:aroma1997sdimension;after:openterraingenerator;before:thermalexpansion;required-after:forge@[14.23.2.2638,)";
 	
 	
 	public static SimpleNetworkWrapper network;
+	public static Random RANDOM = new Random();
 
 	//GUI
 	public static int horseCartGUI_ID = 0;
 	public static int coveredWagonGUI_ID = 1;
+	public static int tillerGUI_ID = 2;
 	private GuiHandlerAnimania guiHandlerAnimania = new GuiHandlerAnimania();
 	
 	// Tabs
@@ -58,18 +62,19 @@ public class Animania
 	public void construction(FMLConstructionEvent event)
 	{
 		FluidRegistry.enableUniversalBucket();
+		AddonHandler.loadAddons(event.getASMHarvestedData());
 	}
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event)
 	{
-		Animania.proxy.preInit();
+		Animania.proxy.preInit(event);
 	}
 
 	@EventHandler
 	public void init(FMLInitializationEvent event)
 	{
-		Animania.proxy.init();
+		Animania.proxy.init(event);
 		NetworkRegistry.INSTANCE.registerGuiHandler(instance, proxy);
 		NetworkRegistry.INSTANCE.registerGuiHandler(this, guiHandlerAnimania);
 	}
@@ -77,6 +82,7 @@ public class Animania
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent e)
 	{
+		Animania.proxy.postInit(e);
 	}
 
 }

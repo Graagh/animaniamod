@@ -26,23 +26,30 @@
 			}
 		],
 		"milk_jersey": [
-            {
-                "custom": {
-                    "fluid": "milk_jersey"
-                }
-            }
-        ],
+			{
+				"custom": {
+					"fluid": "milk_jersey"
+				}
+			}
+		],
 		"milk_goat": [
-            {
-                "custom": {
-                    "fluid": "milk_goat"
-                }
-            }
-        ],
+			{
+				"custom": {
+					"fluid": "milk_goat"
+				}
+			}
+		],
 		"milk_sheep": [
 			{
 				"custom": {
 					"fluid": "milk_sheep"
+				}
+			}
+		],
+		"honey": [
+			{
+				"custom": {
+					"fluid": "animania_honey"
 				}
 			}
 		]

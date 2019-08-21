@@ -1,39 +1,18 @@
 package com.animania.common.items;
 
-import java.util.List;
-import java.util.Random;
-
 import com.animania.Animania;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.RandomAnimalType;
-import com.animania.common.entities.chickens.ChickenType;
-import com.animania.common.entities.cows.CowType;
-import com.animania.common.entities.goats.GoatType;
-import com.animania.common.entities.peacocks.PeacockType;
-import com.animania.common.entities.pigs.PigType;
 import com.animania.common.entities.props.EntityCart;
-import com.animania.common.entities.rodents.rabbits.RabbitType;
-import com.animania.common.entities.sheep.SheepType;
 
-import net.minecraft.block.Block;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.stats.StatList;
-import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.SoundCategory;
-import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
@@ -151,8 +130,7 @@ public class ItemCart extends Item
 		if (!playerIn.isCreative())
 			stack.shrink(1);
 
-		Random rand = new Random();
-		world.playSound(null, playerIn.posX, playerIn.posY, playerIn.posZ, ModSoundEvents.combo, SoundCategory.PLAYERS, 0.8F, ((rand.nextFloat() - rand.nextFloat()) * 0.2F + 1.0F) / 0.8F);
+		world.playSound(null, playerIn.posX, playerIn.posY, playerIn.posZ, ModSoundEvents.combo, SoundCategory.PLAYERS, 0.8F, ((Animania.RANDOM.nextFloat() - Animania.RANDOM.nextFloat()) * 0.2F + 1.0F) / 0.8F);
 		entity.rotationYaw = entity.rotationYaw;
 		entity.deltaRotation = entity.rotationYaw;
 		world.spawnEntity(entity);

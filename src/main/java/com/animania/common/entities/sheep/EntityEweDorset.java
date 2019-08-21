@@ -19,8 +19,6 @@ public class EntityEweDorset extends EntityEweBase
 	{
 		super(worldIn);
 		this.sheepType = SheepType.DORSET;
-		this.dropRaw = ItemHandler.rawMutton;
-		this.dropCooked = ItemHandler.cookedMutton;
 	}
 	
 	@Override
@@ -44,7 +42,7 @@ public class EntityEweDorset extends EntityEweBase
 
 		switch (this.getColorNumber()) {
 		case 0:
-			woolDrops.add(new ItemStack((Blocks.WOOL), i));
+			woolDrops.add(new ItemStack((Blocks.WOOL), i, this.getDyeColor().getMetadata()));
 			break;
 		case 1:
 			woolDrops.add(new ItemStack((BlockHandler.blockAnimaniaWool), i, 0));
@@ -56,4 +54,15 @@ public class EntityEweDorset extends EntityEweBase
 		return woolDrops;
 	}
 
+	@Override
+	public boolean isDyeable()
+	{
+		switch (this.getColorNumber())
+		{
+		case 0:
+			return true;
+		default:
+			return false;
+		}
+	}
 }

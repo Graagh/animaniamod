@@ -1,7 +1,7 @@
 package com.animania.common.entities.peacocks;
 
+import com.animania.api.data.EntityGender;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
 import com.animania.config.AnimaniaConfig;
 
 import net.minecraft.nbt.NBTTagCompound;
@@ -19,7 +19,9 @@ public class EntityPeachickBase extends EntityAnimaniaPeacock
 	public EntityPeachickBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.7F, 1.0F);
+		this.setSize(0.7F, 1.0F); 
+		this.width = 0.7F;
+		this.height = 1.0F;
 		this.ageTimer = 0;
 		this.type = PeacockType.BLUE;
 		this.gender = EntityGender.CHILD;
@@ -139,7 +141,7 @@ public class EntityPeachickBase extends EntityAnimaniaPeacock
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume() - .9F, this.getSoundPitch() + .4F - this.getEntityAge() * 2);
 	}
 

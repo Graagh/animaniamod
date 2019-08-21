@@ -3,19 +3,21 @@ package com.animania.common.entities.pigs;
 import java.util.Set;
 import java.util.UUID;
 
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.AnimaniaAnimal;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.ISpawnable;
-import com.animania.common.entities.genericAi.EntityAnimaniaAvoidWater;
-import com.animania.common.entities.pigs.ai.EntityAIFindFood;
+import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IAnimaniaAnimalBase;
+import com.animania.common.entities.generic.ai.GenericAIFindFood;
+import com.animania.common.entities.generic.ai.GenericAIFindSaltLick;
+import com.animania.common.entities.generic.ai.GenericAIFindWater;
+import com.animania.common.entities.generic.ai.GenericAILookIdle;
+import com.animania.common.entities.generic.ai.GenericAIPanic;
+import com.animania.common.entities.generic.ai.GenericAISleep;
+import com.animania.common.entities.generic.ai.GenericAITempt;
+import com.animania.common.entities.generic.ai.GenericAIWanderAvoidWater;
+import com.animania.common.entities.generic.ai.GenericAIWatchClosest;
 import com.animania.common.entities.pigs.ai.EntityAIFindMud;
-import com.animania.common.entities.pigs.ai.EntityAIFindSaltLickPigs;
-import com.animania.common.entities.pigs.ai.EntityAIFindWater;
-import com.animania.common.entities.pigs.ai.EntityAILookIdlePig;
-import com.animania.common.entities.pigs.ai.EntityAIPanicPigs;
 import com.animania.common.entities.pigs.ai.EntityAIPigSnuffle;
-import com.animania.common.entities.pigs.ai.EntityAISwimmingPigs;
 import com.animania.common.entities.pigs.ai.EntityAITemptItemStack;
 import com.animania.common.handler.BlockHandler;
 import com.animania.common.helper.AnimaniaHelper;
@@ -28,13 +30,11 @@ import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAITempt;
-import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
-import net.minecraft.entity.ai.EntityAIWatchClosest;
+import net.minecraft.entity.ai.EntityAIHurtByTarget;
+import net.minecraft.entity.ai.EntityAISwimming;
 import net.minecraft.entity.effect.EntityLightningBolt;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityPigZombie;
-import net.minecraft.entity.passive.EntityAnimal;
+import net.minecraft.entity.passive.EntityPig;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.init.MobEffects;
@@ -49,14 +49,16 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeModContainer;
+import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.UniversalBucket;
 
-public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, AnimaniaAnimal
+public class EntityAnimaniaPig extends EntityPig implements IAnimaniaAnimalBase
 {
 
 	protected static final DataParameter<Boolean> SADDLED = EntityDataManager.<Boolean>createKey(EntityAnimaniaPig.class, DataSerializers.BOOLEAN);
@@ -68,6 +70,8 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 	protected static final DataParameter<Boolean> PLAYED = EntityDataManager.<Boolean>createKey(EntityAnimaniaPig.class, DataSerializers.BOOLEAN);
 	protected static final DataParameter<Integer> AGE = EntityDataManager.<Integer>createKey(EntityAnimaniaPig.class, DataSerializers.VARINT);
 	protected static final DataParameter<Boolean> HANDFED = EntityDataManager.<Boolean>createKey(EntityAnimaniaPig.class, DataSerializers.BOOLEAN);
+	protected static final DataParameter<Boolean> SLEEPING = EntityDataManager.<Boolean>createKey(EntityAnimaniaPig.class, DataSerializers.BOOLEAN);
+	protected static final DataParameter<Float> SLEEPTIMER = EntityDataManager.<Float>createKey(EntityAnimaniaPig.class, DataSerializers.FLOAT);
 
 	public static final Set<Item> TEMPTATION_ITEMS = Sets.newHashSet(AnimaniaHelper.getItemArray(AnimaniaConfig.careAndFeeding.pigFood));
 	protected boolean boosting;
@@ -83,10 +87,6 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 	protected int damageTimer;
 	protected ItemStack slop;
 	protected PigType pigType;
-	protected Item dropRaw = Items.PORKCHOP;
-	protected Item dropCooked = Items.COOKED_PORKCHOP;
-	protected Item oldDropRaw = Items.PORKCHOP;
-	protected Item oldDropCooked = Items.COOKED_PORKCHOP;
 	protected EntityGender gender;
 
 	public EntityAnimaniaPig(World worldIn)
@@ -99,29 +99,33 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		this.blinkTimer = 80 + this.rand.nextInt(80);
 		this.enablePersistence();
 		this.slop = UniversalBucket.getFilledBucket(ForgeModContainer.getInstance().universalBucket, BlockHandler.fluidSlop);
+		this.entityAIEatGrass = new EntityAIPigSnuffle(this);
+		this.tasks.addTask(11, this.entityAIEatGrass);
 	}
 
 	@Override
 	protected void initEntityAI()
 	{
-		this.entityAIEatGrass = new EntityAIPigSnuffle(this);
-		this.tasks.addTask(0, new EntityAISwimmingPigs(this));
+		this.tasks.addTask(0, new EntityAISwimming(this));
 		this.tasks.addTask(1, new EntityAIFindMud(this, 1.2D));
-		this.tasks.addTask(2, new EntityAIWanderAvoidWater(this, 1.0D));
+		this.tasks.addTask(2, new GenericAIWanderAvoidWater(this, 1.0D));
 		if (!AnimaniaConfig.gameRules.ambianceMode)
 		{
-			this.tasks.addTask(2, new EntityAIFindWater(this, 1.0D));
-			this.tasks.addTask(3, new EntityAIFindFood(this, 1.0D));
+			this.tasks.addTask(3, new GenericAIFindWater<EntityAnimaniaPig>(this, 1.0D, entityAIEatGrass, EntityAnimaniaPig.class));
+			this.tasks.addTask(3, new GenericAIFindFood<EntityAnimaniaPig>(this, 1.0D, entityAIEatGrass, true));
 		}
-		this.tasks.addTask(7, new EntityAIPanicPigs(this, 1.5D));
-		this.tasks.addTask(9, new EntityAITempt(this, 1.2D, Items.CARROT_ON_A_STICK, false));
-		this.tasks.addTask(10, new EntityAITempt(this, 1.2D, false, EntityAnimaniaPig.TEMPTATION_ITEMS));
+		this.tasks.addTask(4, new GenericAIPanic<EntityAnimaniaPig>(this, 1.5D));
+		if (AnimaniaConfig.gameRules.animalsSleep)
+		{
+			this.tasks.addTask(8, new GenericAISleep<EntityAnimaniaPig>(this, 0.8, AnimaniaHelper.getBlock(AnimaniaConfig.careAndFeeding.pigBed), AnimaniaHelper.getBlock(AnimaniaConfig.careAndFeeding.pigBed2), EntityAnimaniaPig.class));
+		}
+		this.tasks.addTask(9, new GenericAITempt<EntityAnimaniaPig>(this, 1.2D, Items.CARROT_ON_A_STICK, false));
+		this.tasks.addTask(10, new GenericAITempt<EntityAnimaniaPig>(this, 1.2D, false, EntityAnimaniaPig.TEMPTATION_ITEMS));
 		this.tasks.addTask(10, new EntityAITemptItemStack(this, 1.2d, UniversalBucket.getFilledBucket(ForgeModContainer.getInstance().universalBucket, BlockHandler.fluidSlop)));
-		this.tasks.addTask(11, this.entityAIEatGrass);
-		this.tasks.addTask(12, new EntityAIFindSaltLickPigs(this, 1.0));
-		this.tasks.addTask(13, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
-		this.tasks.addTask(14, new EntityAnimaniaAvoidWater(this));
-		this.tasks.addTask(15, new EntityAILookIdlePig(this));
+		this.tasks.addTask(12, new GenericAIFindSaltLick<EntityAnimaniaPig>(this, 1.0, entityAIEatGrass));
+		this.tasks.addTask(13, new GenericAIWatchClosest(this, EntityPlayer.class, 6.0F));;
+		this.tasks.addTask(15, new GenericAILookIdle<EntityAnimaniaPig>(this));
+		this.targetTasks.addTask(16, new EntityAIHurtByTarget(this, false, new Class[0]));
 
 	}
 
@@ -243,6 +247,8 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		this.dataManager.register(EntityAnimaniaPig.WATERED, Boolean.valueOf(true));
 		this.dataManager.register(EntityAnimaniaPig.PLAYED, Boolean.valueOf(true));
 		this.dataManager.register(EntityAnimaniaPig.AGE, Integer.valueOf(0));
+		this.dataManager.register(EntityAnimaniaPig.SLEEPING, Boolean.valueOf(false));
+		this.dataManager.register(EntityAnimaniaPig.SLEEPTIMER, Float.valueOf(0.0F));
 	}
 
 	@Override
@@ -258,6 +264,8 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		compound.setBoolean("Watered", this.getWatered());
 		compound.setBoolean("Played", this.getPlayed());
 		compound.setInteger("Age", this.getAge());
+		compound.setBoolean("Sleep", this.getSleeping());
+		compound.setFloat("SleepTimer", this.getSleepTimer());
 
 	}
 
@@ -274,6 +282,8 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		this.setWatered(compound.getBoolean("Watered"));
 		this.setPlayed(compound.getBoolean("Played"));
 		this.setAge(compound.getInteger("Age"));
+		this.setSleeping(compound.getBoolean("Sleep"));
+		this.setSleepTimer(compound.getFloat("SleepTimer"));
 
 	}
 
@@ -311,13 +321,54 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		this.dataManager.set(EntityAnimaniaPig.HANDFED, Boolean.valueOf(handfed));
 	}
 
+	public boolean getSleeping()
+	{
+		try
+		{
+			return (this.getBoolFromDataManager(SLEEPING));
+		}
+		catch (Exception e)
+		{
+			return false;
+		}
+	}
+
+	public void setSleeping(boolean flag)
+	{
+		if (flag)
+		{
+			this.dataManager.set(EntityAnimaniaPig.SLEEPING, Boolean.valueOf(true));
+		}
+		else
+		{
+			this.dataManager.set(EntityAnimaniaPig.SLEEPING, Boolean.valueOf(false));
+		}
+	}
+
+	public Float getSleepTimer()
+	{
+		try
+		{
+			return (this.getFloatFromDataManager(SLEEPTIMER));
+		}
+		catch (Exception e)
+		{
+			return 0F;
+		}
+	}
+
+	public void setSleepTimer(Float timer)
+	{
+		this.dataManager.set(EntityAnimaniaPig.SLEEPTIMER, Float.valueOf(timer));
+	}
+
 	@Override
 	public boolean processInteract(EntityPlayer player, EnumHand hand)
 	{
 		ItemStack stack = player.getHeldItem(hand);
 		EntityPlayer entityplayer = player;
 
-		if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack))
+		if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack) && !this.getSleeping())
 		{
 			if (!player.isCreative())
 			{
@@ -333,7 +384,9 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 			this.setInLove(player);
 			return true;
 		}
-		else if (stack != ItemStack.EMPTY && AnimaniaHelper.hasFluid(stack, BlockHandler.fluidSlop))
+		else if(!stack.isEmpty() && stack.getItem() == Items.SADDLE)
+			return true;
+		else if (stack != ItemStack.EMPTY && AnimaniaHelper.hasFluid(stack, BlockHandler.fluidSlop) && !this.getSleeping())
 		{
 			if (!player.isCreative())
 			{
@@ -345,7 +398,14 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 			this.eatTimer = 40;
 			if (entityAIEatGrass != null)
 				this.entityAIEatGrass.startExecuting();
+			this.setHandFed(true);
 			this.setFed(true);
+			this.setInLove(player);
+			return true;
+		}
+		else if (this.isBreedingItem(stack))
+		{
+			this.consumeItemFromStack(player, stack);
 			this.setInLove(player);
 			return true;
 		}
@@ -354,8 +414,15 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 	}
 
 	@Override
+	protected ResourceLocation getLootTable()
+	{
+		return this instanceof EntityPigletBase ? null : this.pigType.isPrime ? new ResourceLocation(Animania.MODID, "pig_prime") : new ResourceLocation(Animania.MODID, "pig_regular");
+	}
+	
+	@Override
 	protected void dropLoot(boolean wasRecentlyHit, int lootingModifier, DamageSource source)
 	{
+		super.dropLoot(wasRecentlyHit, lootingModifier, source);
 		this.dropFewItems(wasRecentlyHit, lootingModifier);
 		this.dropEquipment(wasRecentlyHit, lootingModifier);
 	}
@@ -367,96 +434,6 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 
 		if (this.getSaddled())
 			this.dropItem(Items.SADDLE, 1);
-	}
-
-	@Override
-	protected void dropFewItems(boolean hit, int lootlevel)
-	{
-		int happyDrops = 0;
-
-		if (this.getPlayed())
-			happyDrops++;
-		if (this.getWatered())
-			happyDrops++;
-		if (this.getFed())
-			happyDrops++;
-
-		ItemStack dropItem;
-		if (AnimaniaConfig.drops.customMobDrops && dropRaw != Items.PORKCHOP && dropCooked != Items.COOKED_PORKCHOP)
-		{
-			String drop = AnimaniaConfig.drops.pigDrop;
-			dropItem = AnimaniaHelper.getItem(drop);
-			if (this.isBurning() && drop.equals(this.dropRaw.getRegistryName().toString()))
-			{
-				drop = this.dropCooked.getRegistryName().toString();
-				dropItem = AnimaniaHelper.getItem(drop);
-			}
-		}
-		else
-		{
-			if (AnimaniaConfig.drops.oldMeatDrops)
-			{
-				dropItem = new ItemStack(this.oldDropRaw, 1);
-				if (this.isBurning())
-					dropItem = new ItemStack(this.oldDropCooked, 1);
-			}
-			else
-			{
-				dropItem = new ItemStack(this.dropRaw, 1);
-				if (this.isBurning())
-					dropItem = new ItemStack(this.dropCooked, 1);
-			}
-		}
-
-		ItemStack dropItem2;
-		String drop2 = AnimaniaConfig.drops.pigDrop2;
-		dropItem2 = AnimaniaHelper.getItem(drop2);
-
-		if (happyDrops == 3)
-		{
-			if (dropItem != null)
-			{
-				dropItem.setCount(2 + lootlevel);
-				EntityItem entityitem = new EntityItem(this.world, this.posX + 0.5D, this.posY + 0.5D, this.posZ + 0.5D, dropItem);
-				world.spawnEntity(entityitem);
-			}
-			if (dropItem2 != null)
-			{
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.pigDrop2Amount + lootlevel);
-			}
-		}
-		else if (happyDrops == 2)
-		{
-			if (dropItem != null)
-			{
-				dropItem.setCount(1 + lootlevel);
-				EntityItem entityitem = new EntityItem(this.world, this.posX + 0.5D, this.posY + 0.5D, this.posZ + 0.5D, dropItem);
-				world.spawnEntity(entityitem);
-			}
-			if (dropItem2 != null)
-			{
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.pigDrop2Amount + lootlevel);
-			}
-		}
-		else if (happyDrops == 1 && dropItem != null)
-		{
-			if (this.isBurning())
-			{
-				this.dropItem(Items.COOKED_PORKCHOP, 1 + lootlevel);
-				if (dropItem2 != null)
-				{
-					this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.pigDrop2Amount + lootlevel);
-				}
-			}
-			else
-			{
-				this.dropItem(Items.PORKCHOP, 1 + lootlevel);
-				if (dropItem2 != null)
-				{
-					this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.pigDrop2Amount + lootlevel);
-				}
-			}
-		}
 	}
 
 	public boolean getSaddled()
@@ -646,6 +623,10 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 	@Override
 	public void onLivingUpdate()
 	{
+
+		if (this.getLeashed() && this.getSleeping())
+			this.setSleeping(false);
+
 		if (this.getAge() == 0)
 		{
 			this.setAge(1);
@@ -727,7 +708,7 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 			{
 				this.happyTimer = 60;
 
-				if (!this.getFed() && !this.getWatered() && !this.getPlayed() && AnimaniaConfig.gameRules.showUnhappyParticles)
+				if (!this.getFed() && !this.getWatered() && !this.getPlayed() && !this.getSleeping() && this.getHandFed() && AnimaniaConfig.gameRules.showUnhappyParticles)
 				{
 					double d = this.rand.nextGaussian() * 0.02D;
 					double d1 = this.rand.nextGaussian() * 0.02D;
@@ -747,7 +728,7 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 	}
 
 	@Override
-	public EntityAgeable createChild(EntityAgeable ageable)
+	public EntityPig createChild(EntityAgeable ageable)
 	{
 		return null;
 	}
@@ -884,4 +865,41 @@ public class EntityAnimaniaPig extends EntityAnimal implements ISpawnable, Anima
 		}
 	}
 
+	@Override
+	public void setSleepingPos(BlockPos pos)
+	{
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public BlockPos getSleepingPos()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Set<Item> getFoodItems()
+	{
+		return TEMPTATION_ITEMS;
+	}
+
+	@Override
+	public void setLiquidFed(boolean liquidFed)
+	{
+		this.setSlopFed(liquidFed);
+	}
+
+	@Override
+	public Fluid getFoodFluid()
+	{
+		return BlockHandler.fluidSlop;
+	}
+
+	@Override
+	public int getBlinkTimer()
+	{
+		return blinkTimer;
+	}
 }

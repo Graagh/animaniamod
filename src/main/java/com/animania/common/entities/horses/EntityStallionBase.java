@@ -1,29 +1,30 @@
 package com.animania.common.entities.horses;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
 
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.horses.ai.EntityAIMateHorses;
-import com.animania.common.handler.ItemHandler;
-import com.animania.common.helper.AnimaniaHelper;
-import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
-import com.animania.config.AnimaniaConfig;
-
+import mcjty.theoneprobe.api.IProbeHitEntityData;
+import mcjty.theoneprobe.api.IProbeInfo;
+import mcjty.theoneprobe.api.ProbeMode;
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.EntityAIBase;
+import net.minecraft.entity.ai.EntityAITasks.EntityAITaskEntry;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.init.MobEffects;
 import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
@@ -36,12 +37,32 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoProviderMateable
-{	
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IMateable;
+import com.animania.api.interfaces.ISterilizable;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.entities.cows.EntityBullBase;
+import com.animania.common.entities.cows.ai.EntityAIAttackMeleeBulls;
+import com.animania.common.entities.generic.ai.GenericAIMate;
+import com.animania.common.entities.goats.EntityAnimaniaGoat;
+import com.animania.common.entities.goats.EntityBuckBase;
+import com.animania.common.entities.goats.EntityDoeBase;
+import com.animania.common.entities.goats.EntityKidBase;
+import com.animania.common.entities.goats.ai.EntityAIButtHeadsGoats;
+import com.animania.common.entities.goats.ai.EntityAIGoatsLeapAtTarget;
+import com.animania.common.helper.AnimaniaHelper;
+import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
+import com.animania.config.AnimaniaConfig;
+
+public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoProviderMateable, IMateable, ISterilizable
+{
+
+	protected static final DataParameter<Boolean> STERILIZED = EntityDataManager.<Boolean> createKey(EntityStallionBase.class, DataSerializers.BOOLEAN);
 
 	private ResourceLocation resourceLocation;
 	private ResourceLocation resourceLocationBlink;
-	private static final String[] HORSE_TEXTURES = new String[] {"black", "bw1", "bw2", "grey", "red", "white"};
+	private static final String[] HORSE_TEXTURES = new String[] { "black", "bw1", "bw2", "grey", "red", "white" };
 	private boolean boosting;
 	private int boostTime;
 	private int totalBoostTime;
@@ -49,12 +70,15 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 	public EntityStallionBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.6F, 2.2F);
+		this.setSize(1.8F, 2.2F); 
+		this.width = 1.8F;
+		this.height = 2.2F;
 		this.stepHeight = 1.2F;
 		this.mateable = true;
 		this.gender = EntityGender.MALE;
-		//this.tasks.addTask(1, new EntityAIFollowMateHorses(this, 1.1D));
-		this.tasks.addTask(3, new EntityAIMateHorses(this, 1.0D));
+		// this.tasks.addTask(1, new EntityAIFollowMateHorses(this, 1.1D));
+		if (!getSterilized())
+			this.tasks.addTask(3, new GenericAIMate<EntityStallionBase, EntityMareBase>(this, 1.0D, EntityMareBase.class, EntityFoalBase.class, EntityAnimaniaHorse.class));
 	}
 
 	protected void applyEntityAttributes()
@@ -66,9 +90,16 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 	}
 
 	@Override
+	protected void entityInit()
+	{
+		this.dataManager.register(STERILIZED, Boolean.valueOf(false));
+		super.entityInit();
+	}
+
+	@Override
 	public double getMountedYOffset()
 	{
-		return (double)this.height * 0.72D;
+		return (double) this.height * 0.72D;
 	}
 
 	@Override
@@ -89,7 +120,7 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 	@Nullable
 	public Entity getControllingPassenger()
 	{
-		return this.getPassengers().isEmpty() ? null : (Entity)this.getPassengers().get(0);
+		return this.getPassengers().isEmpty() ? null : (Entity) this.getPassengers().get(0);
 	}
 
 	public boolean boost()
@@ -97,8 +128,7 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 		if (this.boosting)
 		{
 			return false;
-		}
-		else
+		} else
 		{
 			this.boosting = true;
 			this.boostTime = 0;
@@ -114,21 +144,19 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 		if (!(entity instanceof EntityPlayer))
 		{
 			return false;
-		}
-		else if (this.isHorseSaddled())
+		} else if (this.isHorseSaddled())
 		{
 			return true;
-		}
-		else
+		} else
 		{
 			return false;
 		}
 	}
-	
+
 	@Override
 	public void travel(float strafe, float forward, float friction)
 	{
-		Entity entity = this.getPassengers().isEmpty() ? null : (Entity)this.getPassengers().get(0);
+		Entity entity = this.getPassengers().isEmpty() ? null : (Entity) this.getPassengers().get(0);
 
 		if (this.isHorseSaddled() && this.isBeingRidden() && this.canBeSteered())
 		{
@@ -143,7 +171,7 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 
 			if (this.canPassengerSteer())
 			{
-				float f = (float)this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).getAttributeValue() * 0.7F;
+				float f = (float) this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).getAttributeValue() * 0.7F;
 
 				if (this.boosting)
 				{
@@ -152,13 +180,12 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 						this.boosting = false;
 					}
 
-					f += f * 1.15F * MathHelper.sin((float)this.boostTime / (float)this.totalBoostTime * (float)Math.PI);
+					f += f * 1.15F * MathHelper.sin((float) this.boostTime / (float) this.totalBoostTime * (float) Math.PI);
 				}
 
 				this.setAIMoveSpeed(f);
 				super.travel(0.0F, 1.0F, 0.0f);
-			}
-			else
+			} else
 			{
 				this.motionX = 0.0D;
 				this.motionY = 0.0D;
@@ -177,16 +204,13 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 
 			this.limbSwingAmount += (f1 - this.limbSwingAmount) * 0.4F;
 			this.limbSwing += this.limbSwingAmount;
-		}
-		else
+		} else
 		{
 			this.stepHeight = 1.0F;
 			this.jumpMovementFactor = 0.02F;
 			super.travel(strafe, forward, 0.0f);
 		}
 	}
-
-
 
 	@Override
 	public void setInLove(EntityPlayer player)
@@ -204,63 +228,77 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 		int happy = 0;
 		int num = 1;
 
-		if (this.getWatered()) {
+		if (this.getWatered())
+		{
 			happy++;
-		} 
-		if (this.getFed()) {
+		}
+		if (this.getFed())
+		{
 			happy++;
-		} 
+		}
 
-		if (happy == 2) {
+		if (happy == 2)
+		{
 			num = 18;
-		} else if (happy == 1) {
+		} else if (happy == 1)
+		{
 			num = 36;
-		} else {
+		} else
+		{
 			num = 60;
 		}
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
-		if (chooser == 0) {
+		if (chooser == 0)
+		{
 			return ModSoundEvents.horseliving1;
-		} else if (chooser == 1){
+		} else if (chooser == 1)
+		{
 			return ModSoundEvents.horseliving2;
-		} else if (chooser == 2){
+		} else if (chooser == 2)
+		{
 			return ModSoundEvents.horseliving3;
-		} else if (chooser == 3){
+		} else if (chooser == 3)
+		{
 			return ModSoundEvents.horseliving4;
-		} else if (chooser == 4){
+		} else if (chooser == 4)
+		{
 			return ModSoundEvents.horseliving5;
-		} else {
+		} else
+		{
 			return ModSoundEvents.horseliving6;
-		} 
+		}
 	}
 
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
-		if (chooser == 0) {
+		if (chooser == 0)
+		{
 			return ModSoundEvents.horsehurt1;
-		} else if (chooser == 1) {
+		} else if (chooser == 1)
+		{
 			return ModSoundEvents.horsehurt2;
-		} else {
+		} else
+		{
 			return ModSoundEvents.horsehurt3;
 		}
 	}
 
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
-		if (chooser == 0) {
+		if (chooser == 0)
+		{
 			return ModSoundEvents.horsehurt1;
-		} else if (chooser == 1) {
+		} else if (chooser == 1)
+		{
 			return ModSoundEvents.horsehurt2;
-		} else {
+		} else
+		{
 			return ModSoundEvents.horsehurt3;
 		}
 	}
@@ -270,39 +308,39 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 		{
 			this.playSound(soundevent, this.getSoundVolume(), this.getSoundPitch() - .2F);
 		}
 	}
 
-
 	@SideOnly(Side.CLIENT)
 	public float getHeadRotationPointY(float p_70894_1_)
 	{
-		if (this.isBeingRidden()) {
+		if (this.isBeingRidden())
+		{
 			return 0;
-		} 
+		}
 
-		return this.eatTimer <= 0 ? 0.0F : (this.eatTimer >= 4 && this.eatTimer <= 156 ? 1.0F : (this.eatTimer < 4 ? ((float)this.eatTimer - p_70894_1_) / 4.0F : -((float)(this.eatTimer - 160) - p_70894_1_) / 4.0F));
+		return this.eatTimer <= 0 ? 0.0F : (this.eatTimer >= 4 && this.eatTimer <= 156 ? 1.0F : (this.eatTimer < 4 ? ((float) this.eatTimer - p_70894_1_) / 4.0F : -((float) (this.eatTimer - 160) - p_70894_1_) / 4.0F));
 	}
 
 	@SideOnly(Side.CLIENT)
 	public float getHeadRotationAngleX(float p_70890_1_)
 	{
 
-		if (this.isBeingRidden()) {
+		if (this.isBeingRidden())
+		{
 			return 0;
-		} 
+		}
 
 		if (this.eatTimer > 4 && this.eatTimer <= 156)
 		{
-			float f = ((float)(this.eatTimer - 4) - p_70890_1_) / 80.0F;
-			return ((float)Math.PI / 5F) + ((float)Math.PI * 7F / 500F) * MathHelper.sin(f * 28.7F);
-		}
-		else
+			float f = ((float) (this.eatTimer - 4) - p_70890_1_) / 80.0F;
+			return ((float) Math.PI / 5F) + ((float) Math.PI * 7F / 500F) * MathHelper.sin(f * 28.7F);
+		} else
 		{
-			return this.eatTimer > 0 ? ((float)Math.PI / 5F) : this.rotationPitch * 0.017453292F;
+			return this.eatTimer > 0 ? ((float) Math.PI / 5F) : this.rotationPitch * 0.017453292F;
 		}
 	}
 
@@ -318,26 +356,29 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 
 	public void onLivingUpdate()
 	{
-		if (this.getAge() == 0) {
+
+		if (this.getAge() == 0)
+		{
 			this.setAge(1);
 		}
 
-		if (this.isBeingRidden() && !this.isAIDisabled()) {
-			this.setNoAI(true);
-		} else {
-			this.setNoAI(false);
-		}
+		if (this.getLeashed() && this.getSleeping())
+			this.setSleeping(false);
+
+		if (this.isBeingRidden() && this.getSleeping())
+			this.setSleeping(false);
 
 		if (this.world.isRemote)
 		{
 			this.eatTimer = Math.max(0, this.eatTimer - 1);
 		}
 
-		if (this.getColorNumber() > 5) {
+		if (this.getColorNumber() > 5)
+		{
 			this.setColorNumber(0);
 		}
 
-		if (this.fedTimer > -1 && !AnimaniaConfig.gameRules.ambianceMode)
+		if (this.fedTimer > -1 && this.getHandFed() && !AnimaniaConfig.gameRules.ambianceMode)
 		{
 			this.fedTimer--;
 
@@ -345,7 +386,7 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 				this.setFed(false);
 		}
 
-		if (this.wateredTimer > -1)
+		if (this.wateredTimer > -1 && this.getHandFed())
 		{
 			this.wateredTimer--;
 
@@ -353,19 +394,22 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 				this.setWatered(false);
 		}
 
-
 		boolean fed = this.getFed();
 		boolean watered = this.getWatered();
 
-		if (!fed || !watered) {
+		if (!fed || !watered)
+		{
 			this.addPotionEffect(new PotionEffect(MobEffects.WEAKNESS, 2, 0, false, false));
-		} else if (!fed && !watered) {
+		} else if (!fed && !watered)
+		{
 			this.addPotionEffect(new PotionEffect(MobEffects.WEAKNESS, 2, 1, false, false));
 		}
 
-		if (this.blinkTimer > -1) {
+		if (this.blinkTimer > -1)
+		{
 			this.blinkTimer--;
-			if (blinkTimer == 0) {
+			if (blinkTimer == 0)
+			{
 				this.blinkTimer = 80 + rand.nextInt(80);
 
 				// Check for Mate
@@ -385,7 +429,8 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 							{
 								mateReset = false;
 								EntityMareBase fem = (EntityMareBase) entity;
-								if (fem.getPregnant()) {
+								if (fem.getPregnant())
+								{
 									this.setHandFed(false);
 								}
 								break;
@@ -400,16 +445,19 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 			}
 		}
 
-		if (this.happyTimer > -1) {
+		if (this.happyTimer > -1)
+		{
 			this.happyTimer--;
-			if (happyTimer == 0) {
+			if (happyTimer == 0)
+			{
 				happyTimer = 60;
 
-				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles) {
+				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles && !this.getSleeping() && this.getHandFed())
+				{
 					double d = rand.nextGaussian() * 0.001D;
 					double d1 = rand.nextGaussian() * 0.001D;
 					double d2 = rand.nextGaussian() * 0.001D;
-					world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, (posX + (double)(rand.nextFloat() * width)) - (double)width, posY + 1.5D + (double)(rand.nextFloat() * height), (posZ + (double)(rand.nextFloat() * width)) - (double)width, d, d1, d2);
+					world.spawnParticle(EnumParticleTypes.SMOKE_NORMAL, (posX + (double) (rand.nextFloat() * width)) - (double) width, posY + 1.5D + (double) (rand.nextFloat() * height), (posZ + (double) (rand.nextFloat() * width)) - (double) width, d, d1, d2);
 				}
 			}
 		}
@@ -423,18 +471,19 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 
 		ItemStack stack = player.getHeldItem(hand);
 
-		if (stack != ItemStack.EMPTY && stack.getItem() == Items.WATER_BUCKET) {
+		if (stack != ItemStack.EMPTY && stack.getItem() == Items.WATER_BUCKET)
+		{
 			{
 				if (stack.getCount() == 1 && !player.capabilities.isCreativeMode)
 				{
 					player.setHeldItem(hand, new ItemStack(Items.BUCKET));
-				}
-				else if (!player.capabilities.isCreativeMode && !player.inventory.addItemStackToInventory(new ItemStack(Items.BUCKET)))
+				} else if (!player.capabilities.isCreativeMode && !player.inventory.addItemStackToInventory(new ItemStack(Items.BUCKET)))
 				{
 					player.dropItem(new ItemStack(Items.BUCKET), false);
 				}
 
-				if (this.entityAIEatGrass != null) {
+				if (this.entityAIEatGrass != null)
+				{
 					this.entityAIEatGrass.startExecuting();
 					eatTimer = 40;
 				}
@@ -442,22 +491,25 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 				this.setInLove(player);
 				return true;
 			}
-		} else if (!this.isChild() && this.isHorseSaddled()) {
-			
+		} else if (!this.isChild() && this.isHorseSaddled())
+		{
+
 			if (player.isSneaking())
 			{
 				this.openGUI(player);
 				return true;
-			} else {
+			} else
+			{
 				return super.processInteract(player, hand);
 			}
-			
-		}
-		else if (stack != null && stack.getItem() == ItemHandler.ridingCrop && !this.isBeingRidden() && this.getWatered() && this.getFed()) {
+
+		} else if (!player.isSneaking() && stack != null && this.isHorseSaddled() && !this.getSleeping() && !this.isBeingRidden() && this.getWatered() && this.getFed())
+		{
 			this.mountTo(player);
-			//player.addStat(AnimaniaAchievements.Horseriding, 1);
+			// player.addStat(AnimaniaAchievements.Horseriding, 1);
 			return true;
-		} else {
+		} else
+		{
 			return super.processInteract(player, hand);
 		}
 	}
@@ -468,6 +520,48 @@ public class EntityStallionBase extends EntityAnimaniaHorse implements TOPInfoPr
 		return null;
 	}
 
+	@Override
+	public boolean getSterilized()
+	{
+		return this.getBoolFromDataManager(STERILIZED);
+	}
 
+	@Override
+	public void setSterilized(boolean sterilized)
+	{
+		this.dataManager.set(STERILIZED, Boolean.valueOf(sterilized));
+	}
+
+	@Override
+	public NBTTagCompound writeToNBT(NBTTagCompound compound)
+	{
+		compound.setBoolean("Sterilized", getSterilized());
+		return super.writeToNBT(compound);
+	}
+
+	@Override
+	public void readFromNBT(NBTTagCompound compound)
+	{
+		this.setSterilized(compound.getBoolean("Sterilized"));
+		super.readFromNBT(compound);
+	}
+
+	@Override
+	public void sterilize()
+	{
+		Iterator<EntityAITaskEntry> it = this.tasks.taskEntries.iterator();
+		while (it.hasNext())
+		{
+			EntityAITaskEntry entry = it.next();
+			EntityAIBase ai = entry.action;
+			if (ai instanceof GenericAIMate)
+			{
+				entry.using = false;
+				ai.resetTask();
+				it.remove();
+			}
+		}
+		setSterilized(true);
+	}
 
 }

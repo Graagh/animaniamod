@@ -4,6 +4,8 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
+import com.animania.config.AnimaniaConfig;
+
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
@@ -23,35 +25,42 @@ import net.minecraft.world.World;
 
 public class ItemMilkBottle extends ItemAnimaniaFood
 {
-	public ItemMilkBottle() {
+	public ItemMilkBottle()
+	{
 		super(4, 4f, "milk_bottle");
 		this.setMaxStackSize(4);
 		this.setContainerItem(Items.GLASS_BOTTLE);
+		this.setAlwaysEdible();
 	}
 
 	@Override
 	@Nullable
-	public ItemStack onItemUseFinish(ItemStack stack, World worldIn, EntityLivingBase entityLiving) {
+	public ItemStack onItemUseFinish(ItemStack stack, World worldIn, EntityLivingBase entityLiving)
+	{
 
-		if(entityLiving instanceof EntityPlayer)
-			((EntityPlayer)entityLiving).clearActivePotions();
-
-		if (entityLiving instanceof EntityPlayer && !((EntityPlayer)entityLiving).capabilities.isCreativeMode)
+		if (entityLiving instanceof EntityPlayer)
 		{
-			
-			if (!worldIn.isRemote) {
-				EntityItem entityitem = new EntityItem(worldIn, entityLiving.posX + 0.5D, entityLiving.posY + 0.5D, entityLiving.posZ + 0.5D, new ItemStack(Items.GLASS_BOTTLE));
-				worldIn.spawnEntity(entityitem);
-			}
+			EntityPlayer entityPlayer = (EntityPlayer) entityLiving;
+			entityPlayer.clearActivePotions();
 
-			EntityPlayer entityplayer = (EntityPlayer)entityLiving;
-			if (entityplayer.getFoodStats() != null) {
-				entityplayer.getFoodStats().addStats(this, stack);
+			if (!entityPlayer.capabilities.isCreativeMode)
+			{
+
+				if (!worldIn.isRemote)
+				{
+					EntityItem entityitem = new EntityItem(worldIn, entityLiving.posX + 0.5D, entityLiving.posY + 0.5D, entityLiving.posZ + 0.5D, new ItemStack(Items.GLASS_BOTTLE));
+					worldIn.spawnEntity(entityitem);
+				}
+
+				if (entityPlayer.getFoodStats() != null)
+				{
+					entityPlayer.getFoodStats().addStats(this, stack);
+				}
+				worldIn.playSound((EntityPlayer) null, entityPlayer.posX, entityPlayer.posY, entityPlayer.posZ, SoundEvents.ENTITY_PLAYER_BURP, SoundCategory.PLAYERS, 0.5F, worldIn.rand.nextFloat() * 0.1F + 0.9F);
+				this.onFoodEaten(stack, worldIn, entityPlayer);
+				entityPlayer.addStat(StatList.getObjectUseStats(this));
+				stack.shrink(1);
 			}
-			worldIn.playSound((EntityPlayer)null, entityplayer.posX, entityplayer.posY, entityplayer.posZ, SoundEvents.ENTITY_PLAYER_BURP, SoundCategory.PLAYERS, 0.5F, worldIn.rand.nextFloat() * 0.1F + 0.9F);
-			this.onFoodEaten(stack, worldIn, entityplayer);
-			entityplayer.addStat(StatList.getObjectUseStats(this));
-			stack.shrink(1);
 		}
 
 		return stack;
@@ -62,22 +71,25 @@ public class ItemMilkBottle extends ItemAnimaniaFood
 		playerIn.setActiveHand(hand);
 		return new ActionResult(EnumActionResult.SUCCESS, itemStackIn);
 	}
-	
+
 	@Override
 	protected void onFoodEaten(ItemStack itemstack, World worldObj, EntityPlayer entityplayer)
 	{
-		
-	}
 
-	@Override
-	public void addInformation(ItemStack stack, @Nullable World worldIn, List<String> list, ITooltipFlag flagIn)
-	{
-		list.add(TextFormatting.GREEN + I18n.translateToLocal("tooltip.an.removeall"));
-		list.add(TextFormatting.GOLD + I18n.translateToLocal("tooltip.an.edibleanytime"));
 	}
 
 	public EnumAction getItemUseAction(ItemStack stack)
 	{
 		return EnumAction.DRINK;
+
+	}
+
+	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn)
+	{
+		tooltip.add(TextFormatting.GREEN + I18n.translateToLocal("tooltip.an.removeall"));
+
+		if (AnimaniaConfig.gameRules.eatFoodAnytime)
+			tooltip.add(TextFormatting.GOLD + I18n.translateToLocal("tooltip.an.edibleanytime"));
+
 	}
 }

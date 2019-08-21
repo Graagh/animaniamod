@@ -12,9 +12,9 @@ public class EntityPeacockCharcoal extends EntityPeacockBase
 	{
 		super(worldIn);
 		this.type = PeacockType.CHARCOAL;
-		this.drop = ItemHandler.peacockFeatherCharcoal;
 		this.resourceLocation = new ResourceLocation("animania:textures/entity/peacocks/peacock_charcoal.png");
 		this.resourceLocationBlink = new ResourceLocation("animania:textures/entity/peacocks/peacock_charcoal_blink.png");
+		this.lidCol = 0x9E9792;
 	}
 	
 	@Override

@@ -4,6 +4,7 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
+import com.animania.api.interfaces.IFoodProviderTE;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.common.tileentities.handler.FluidHandlerTrough;
 import com.animania.common.tileentities.handler.ItemHandlerTrough;
@@ -23,9 +24,9 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.items.CapabilityItemHandler;
 
-public class TileEntityTrough extends TileEntity implements ITickable
+public class TileEntityTrough extends TileEntity implements ITickable, IFoodProviderTE
 {
-	private TroughContent troughType;
+	protected TroughContent troughType;
 	private int troughRotation;
 
 	public ItemHandlerTrough itemHandler;
@@ -36,7 +37,7 @@ public class TileEntityTrough extends TileEntity implements ITickable
 
 	public TileEntityTrough()
 	{
-
+		
 		this.itemHandler = new ItemHandlerTrough();
 		this.fluidHandler = new FluidHandlerTrough(1000);
 	}
@@ -194,7 +195,14 @@ public class TileEntityTrough extends TileEntity implements ITickable
 		AnimaniaHelper.sendTileEntityUpdate(this);
 	}
 	
+	@Override
 	public boolean canConsume(@Nullable Set<Item> fooditems, @Nullable Fluid fluid)
+	{
+		return canConsume(fluid == null ? null : new FluidStack(fluid, 0), fooditems);
+	}
+	
+	@Override
+	public boolean canConsume(@Nullable FluidStack fluid, @Nullable Set<Item> fooditems)
 	{
 		if(fooditems != null && !this.itemHandler.getStackInSlot(0).isEmpty())
 		{
@@ -202,15 +210,16 @@ public class TileEntityTrough extends TileEntity implements ITickable
 			return fooditems.contains(stack.getItem());
 		}
 		
-		if(fluid != null && this.fluidHandler.getFluid() != null)
+		if(fluid != null && this.fluidHandler.getFluid() != null && fluid.getFluid() == this.fluidHandler.getFluid().getFluid())
 		{
 			FluidStack fluidstack = this.fluidHandler.getFluid();
-			return fluidstack.getFluid() == fluid;
+			return fluidstack.getFluid() == fluid.getFluid() && fluidstack.amount >= fluid.amount;
 		}
 		
 		return false;
 	}
 	
+	@Override
 	public void consumeSolidOrLiquid(int liquidAmount, int itemAmount)
 	{
 		if(!this.itemHandler.getStackInSlot(0).isEmpty())
@@ -226,11 +235,13 @@ public class TileEntityTrough extends TileEntity implements ITickable
 		}
 	}
 	
+	@Override
 	public void consumeSolid(int amount)
 	{
 		this.itemHandler.getStackInSlot(0).shrink(amount);
 	}
 	
+	@Override
 	public void consumeLiquid(int amount)
 	{
 		this.fluidHandler.drain(amount, true);

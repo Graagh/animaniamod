@@ -1,17 +1,9 @@
 package com.animania.common.entities.pigs;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.helper.AnimaniaHelper;
-import com.animania.compat.top.providers.entity.TOPInfoProviderPig;
-import com.animania.config.AnimaniaConfig;
-import com.google.common.base.Optional;
 
 import mcjty.theoneprobe.api.IProbeHitEntityData;
 import mcjty.theoneprobe.api.IProbeInfo;
@@ -43,7 +35,16 @@ import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderPig
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IMateable;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.helper.AnimaniaHelper;
+import com.animania.compat.top.providers.entity.TOPInfoProviderPig;
+import com.animania.config.AnimaniaConfig;
+import com.google.common.base.Optional;
+
+public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderPig, IMateable
 {
 	protected static final DataParameter<Optional<UUID>> MATE_UNIQUE_ID = EntityDataManager.<Optional<UUID>>createKey(EntitySowBase.class, DataSerializers.OPTIONAL_UNIQUE_ID);
 	public int dryTimerSow;
@@ -55,7 +56,9 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 	public EntitySowBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.1F, 1.0F);
+		this.setSize(1.1F, 1.0F); 
+		this.width = 1.1F;
+		this.height = 1.0F;
 		this.stepHeight = 1.1F;
 		this.gender = EntityGender.FEMALE;
 	}
@@ -308,8 +311,7 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 		else
 			num = 40;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.pig1;
@@ -331,8 +333,7 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0)
 			return ModSoundEvents.pigHurt1;
@@ -345,8 +346,7 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 	@Override
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0)
 			return ModSoundEvents.pigHurt1;
@@ -361,7 +361,7 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume(), this.getSoundPitch());
 	}
 
@@ -454,6 +454,9 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 			this.setFertile(true);
 			this.dryTimerSow = AnimaniaConfig.careAndFeeding.gestationTimer/5 + rand.nextInt(50);
 		}
+		
+		if (this.isBeingRidden() && this.getSleeping())
+			this.setSleeping(false);
 
 		if (this.blinkTimer > -1)
 		{
@@ -499,6 +502,11 @@ public class EntitySowBase extends EntityAnimaniaPig implements TOPInfoProviderP
 		{
 			gestationTimer--;
 			this.setGestation(gestationTimer);
+			
+			if (gestationTimer < 200 && this.getSleeping()) {
+				this.setSleeping(false);
+			}
+			
 			if (gestationTimer == 0)
 			{
 

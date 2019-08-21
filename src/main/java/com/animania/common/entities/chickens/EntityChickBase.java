@@ -1,7 +1,7 @@
 package com.animania.common.entities.chickens;
 
+import com.animania.api.data.EntityGender;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
 import com.animania.compat.top.providers.entity.TOPInfoProviderBase;
 import com.animania.config.AnimaniaConfig;
 
@@ -20,11 +20,13 @@ public class EntityChickBase extends EntityAnimaniaChicken implements TOPInfoPro
 
 	protected static final DataParameter<Float> AGE = EntityDataManager.<Float>createKey(EntityChickBase.class, DataSerializers.FLOAT);
 	protected int ageTimer;
-
+	
 	public EntityChickBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.7F, 0.8F);
+		this.setSize(0.7F, 0.8F); 
+		this.width = 0.7F;
+		this.height = 0.8F;
 		this.tasks.addTask(5, new EntityAIFollowParent(this, 1.1D));
 		this.ageTimer = 0;
 		this.type = ChickenType.LEGHORN;

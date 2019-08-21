@@ -4,7 +4,7 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.animania.common.entities.EntityGender;
+import com.animania.api.data.EntityGender;
 import com.animania.common.entities.amphibians.EntityAmphibian;
 import com.animania.common.entities.amphibians.EntityFrogs;
 import com.animania.common.entities.amphibians.EntityToad;
@@ -45,7 +45,9 @@ public class EntityHenBase extends EntityAnimaniaChicken implements TOPInfoProvi
 	public EntityHenBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.5F, 0.7F);
+		this.setSize(0.5F, 0.7F); 
+		this.width = 0.5F;
+		this.height = 0.7F;
 		this.tasks.addTask(6, new EntityAIFindNest(this, 1.0D));
 		this.tasks.addTask(9, new EntityAILeapAtTarget(this, 0.2F));
 		this.tasks.addTask(10, new EntityAIAttackMelee(this, 1.0D, true));
@@ -119,6 +121,11 @@ public class EntityHenBase extends EntityAnimaniaChicken implements TOPInfoProvi
 	@Override
 	public boolean attackEntityAsMob(Entity entityIn)
 	{
+		
+		if (this.getSleeping()) {
+			this.setSleeping(false);
+		}
+		
 		boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 2.0F);
 
 		if (flag)
@@ -195,7 +202,7 @@ public class EntityHenBase extends EntityAnimaniaChicken implements TOPInfoProvi
 	public void onLivingUpdate()
 	{
 
-		if (!AnimaniaConfig.drops.chickensDropEggs) {
+		if (!AnimaniaConfig.gameRules.chickensDropEggs) {
 			this.timeUntilNextEgg = 1000;
 		}
 

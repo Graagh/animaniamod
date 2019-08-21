@@ -1,16 +1,19 @@
 package com.animania.common.entities.chickens;
 
-import java.util.Random;
+import java.util.List;
 
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
 import com.animania.common.entities.amphibians.EntityAmphibian;
 import com.animania.common.entities.amphibians.EntityFrogs;
 import com.animania.common.entities.amphibians.EntityToad;
+import com.animania.common.entities.cows.EntityAnimaniaCow;
 import com.animania.common.entities.rodents.EntityFerretGrey;
 import com.animania.common.entities.rodents.EntityFerretWhite;
 import com.animania.common.entities.rodents.EntityHedgehog;
 import com.animania.common.entities.rodents.EntityHedgehogAlbino;
+import com.animania.common.helper.AnimaniaHelper;
 import com.animania.compat.top.providers.entity.TOPInfoProviderBase;
 import com.animania.config.AnimaniaConfig;
 
@@ -40,7 +43,9 @@ public class EntityRoosterBase extends EntityAnimaniaChicken implements TOPInfoP
 	public EntityRoosterBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.6F, 0.8F);
+		this.setSize(0.6F, 0.8F); 
+		this.width = 0.6F;
+		this.height = 0.8F;
 		this.setTimeUntilNextCrow(this.rand.nextInt(200) + 200);
 		this.tasks.addTask(3, new EntityAILeapAtTarget(this, 0.2F));
 		this.tasks.addTask(3, new EntityAIAttackMelee(this, 1.0D, true));
@@ -138,6 +143,22 @@ public class EntityRoosterBase extends EntityAnimaniaChicken implements TOPInfoP
 			else if (crowChooser == 2)
 				this.world.playSound(null, this.posX, this.posY, this.posZ, ModSoundEvents.chickenCrow3, SoundCategory.PLAYERS, 0.6F, 1.05F + modular);
 			this.setTimeUntilNextCrow(this.rand.nextInt(200) + 200);
+			
+			List list = AnimaniaHelper.getEntitiesInRange(EntityAnimaniaCow.class, 30, world, this.getPosition());
+			
+			
+			for (int i = 0; i < list.size(); i++)
+			{
+				if (list.get(i) instanceof EntityAnimaniaCow)
+				{
+					EntityAnimaniaCow entityCow = (EntityAnimaniaCow) list.get(i);
+					if (entityCow.getSleeping() && currentTime > 24000) {
+						entityCow.setSleeping(false);
+						entityCow.setSleepTimer(0F);
+					}
+				}
+			}
+			
 
 		}
 
@@ -179,24 +200,12 @@ public class EntityRoosterBase extends EntityAnimaniaChicken implements TOPInfoP
 
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source) {
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.chickenHurt1;
-		else
-			return ModSoundEvents.chickenHurt2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.chickenHurt1 : ModSoundEvents.chickenHurt2;
 	}
 
 	@Override
 	protected SoundEvent getDeathSound() {
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.chickenDeath1;
-		else
-			return ModSoundEvents.chickenDeath2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.chickenDeath1 : ModSoundEvents.chickenDeath2;
 	}
 
 	@Override

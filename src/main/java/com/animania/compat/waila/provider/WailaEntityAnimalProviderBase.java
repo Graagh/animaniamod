@@ -2,6 +2,7 @@ package com.animania.compat.waila.provider;
 
 import java.util.List;
 
+import com.animania.api.interfaces.ISterilizable;
 import com.animania.common.entities.chickens.EntityAnimaniaChicken;
 import com.animania.common.entities.cows.EntityAnimaniaCow;
 import com.animania.common.entities.goats.EntityAnimaniaGoat;
@@ -42,61 +43,80 @@ public class WailaEntityAnimalProviderBase implements IWailaEntityProvider
 	@Override
 	public List<String> getWailaBody(Entity entity, List<String> currenttip, IWailaEntityAccessor accessor, IWailaConfigHandler config)
 	{
-		
+
 		NBTTagCompound comp = accessor.getNBTData();
 		boolean fed = accessor.getNBTData().getBoolean("Fed");
 		boolean watered = accessor.getNBTData().getBoolean("Watered");
-		
-		if (entity instanceof EntityAnimaniaChicken) {
+		boolean sleeping = accessor.getNBTData().getBoolean("Sleeping");
+
+		if (entity instanceof EntityAnimaniaChicken)
+		{
 			EntityAnimaniaChicken tempEnt = (EntityAnimaniaChicken) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaCow) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaCow)
+		{
 			EntityAnimaniaCow tempEnt = (EntityAnimaniaCow) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaGoat) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaGoat)
+		{
 			EntityAnimaniaGoat tempEnt = (EntityAnimaniaGoat) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaHorse) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaHorse)
+		{
 			EntityAnimaniaHorse tempEnt = (EntityAnimaniaHorse) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaPeacock) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaPeacock)
+		{
 			EntityAnimaniaPeacock tempEnt = (EntityAnimaniaPeacock) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaPig) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaPig)
+		{
 			EntityAnimaniaPig tempEnt = (EntityAnimaniaPig) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaRabbit) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaRabbit)
+		{
 			EntityAnimaniaRabbit tempEnt = (EntityAnimaniaRabbit) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityAnimaniaSheep) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityAnimaniaSheep)
+		{
 			EntityAnimaniaSheep tempEnt = (EntityAnimaniaSheep) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityHedgehogBase) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityHedgehogBase)
+		{
 			EntityHedgehogBase tempEnt = (EntityHedgehogBase) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityFerretBase) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityFerretBase)
+		{
 			EntityFerretBase tempEnt = (EntityFerretBase) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
-		} else if (entity instanceof EntityHamster) {
+			sleeping = tempEnt.getSleeping();
+		} else if (entity instanceof EntityHamster)
+		{
 			EntityHamster tempEnt = (EntityHamster) entity;
 			fed = tempEnt.getFed();
 			watered = tempEnt.getWatered();
+			sleeping = tempEnt.getSleeping();
 		}
-		
-		
-		
-		
-		
+
 		if (fed && watered && !AnimaniaConfig.gameRules.ambianceMode)
 			currenttip.add(I18n.translateToLocal("text.waila.fed"));
 
@@ -108,6 +128,16 @@ public class WailaEntityAnimalProviderBase implements IWailaEntityProvider
 
 		if (!fed && !watered && !AnimaniaConfig.gameRules.ambianceMode)
 			currenttip.add(I18n.translateToLocal("text.waila.hungry") + ", " + I18n.translateToLocal("text.waila.thirsty"));
+
+		if (sleeping)
+			currenttip.add(I18n.translateToLocal("text.waila.sleeping"));
+
+		if (accessor.getPlayer().isSneaking())
+			if (entity instanceof ISterilizable)
+			{
+				if (((ISterilizable) entity).getSterilized())
+					currenttip.add(I18n.translateToLocal("text.waila.sterilized"));
+			}
 
 		return currenttip;
 	}
@@ -125,7 +155,7 @@ public class WailaEntityAnimalProviderBase implements IWailaEntityProvider
 
 		tag.setBoolean("Fed", comp.getBoolean("Fed"));
 		tag.setBoolean("Watered", comp.getBoolean("Watered"));
-		
+
 		return tag;
 	}
 

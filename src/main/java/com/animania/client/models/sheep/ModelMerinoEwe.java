@@ -1,5 +1,8 @@
 package com.animania.client.models.sheep;
 
+import com.animania.client.models.IColoredModel;
+import com.animania.client.models.render.ModelRendererColored;
+import com.animania.common.entities.sheep.EntityAnimaniaSheep;
 import com.animania.common.entities.sheep.EntityEweMerino;
 import com.animania.common.entities.sheep.EntityLambMerino;
 
@@ -9,23 +12,23 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.math.MathHelper;
 
-public class ModelMerinoEwe extends ModelBase
+public class ModelMerinoEwe extends ModelBase implements IColoredModel
 {	
 	private float headRotationAngleX;
 	public ModelRenderer HeadNode = new ModelRenderer(this, 0, 0);
 
 	ModelRenderer Body;
 	ModelRenderer RightFrontLeg;
-	ModelRenderer RightFrontLegWool;
+	ModelRendererColored RightFrontLegWool;
 	ModelRenderer Hips;
 	ModelRenderer RightBackLeg;
-	ModelRenderer RightBackLegWool;
+	ModelRendererColored RightBackLegWool;
 	ModelRenderer Tail;
-	ModelRenderer WoolBody1;
-	ModelRenderer WoolBody2;
-	ModelRenderer WoolHips;
+	ModelRendererColored WoolBody1;
+	ModelRendererColored WoolBody2;
+	ModelRendererColored WoolHips;
 	ModelRenderer LeftBackLeg;
-	ModelRenderer LeftBackLegWool;
+	ModelRendererColored LeftBackLegWool;
 	ModelRenderer Neck;
 	ModelRenderer Head;
 	ModelRenderer UpperJaw;
@@ -37,11 +40,11 @@ public class ModelMerinoEwe extends ModelBase
 	ModelRenderer LeftEar2;
 	ModelRenderer RightEar1;
 	ModelRenderer RightEar2;
-	ModelRenderer HeadWool;
-	ModelRenderer NeckWool;
-	ModelRenderer NeckWool2;
+	ModelRendererColored HeadWool;
+	ModelRendererColored NeckWool;
+	ModelRendererColored NeckWool2;
 	ModelRenderer LeftFrontLeg;
-	ModelRenderer LeftFrontLegWool;
+	ModelRendererColored LeftFrontLegWool;
 
 
 	public ModelMerinoEwe()
@@ -59,7 +62,7 @@ public class ModelMerinoEwe extends ModelBase
 		RightFrontLeg.setTextureSize( 128, 128 );
 		RightFrontLeg.addBox( -1.5F, 0F, -1.5F, 3, 16, 3);
 		RightFrontLeg.setRotationPoint( -4F, 9.149483F, -10.08116F + 7F);
-		RightFrontLegWool = new ModelRenderer( this, 98, 65 );
+		RightFrontLegWool = new ModelRendererColored( this, 98, 65 );
 		RightFrontLegWool.setTextureSize( 128, 128 );
 		RightFrontLegWool.addBox( -2F, -2F, -2.5F, 4, 12, 5);
 		RightFrontLegWool.setRotationPoint( -4F, 9.149483F, -10.08116F+ 7F );
@@ -71,7 +74,7 @@ public class ModelMerinoEwe extends ModelBase
 		RightBackLeg.setTextureSize( 128, 128 );
 		RightBackLeg.addBox( -1.5F, -0.5F, -1.5F, 3, 18, 3);
 		RightBackLeg.setRotationPoint( -4.5F, 7.543364F, 9.238067F + 7F);
-		RightBackLegWool = new ModelRenderer( this, 99, 83 );
+		RightBackLegWool = new ModelRendererColored( this, 99, 83 );
 		RightBackLegWool.setTextureSize( 128, 128 );
 		RightBackLegWool.addBox( -2F, -1F, -2.5F, 4, 14, 5);
 		RightBackLegWool.setRotationPoint( -4.5F, 7.043413F, 9.245048F+ 7F );
@@ -79,15 +82,15 @@ public class ModelMerinoEwe extends ModelBase
 		Tail.setTextureSize( 128, 128 );
 		Tail.addBox( -1.5F, -1F, -2F, 3, 7, 3);
 		Tail.setRotationPoint( 0F, 3.352909F, 12.66545F + 7F);
-		WoolBody1 = new ModelRenderer( this, 40, 99 );
+		WoolBody1 = new ModelRendererColored( this, 40, 99 );
 		WoolBody1.setTextureSize( 128, 128 );
 		WoolBody1.addBox( -5F, -6.5F, -6F, 10, 17, 12);
 		WoolBody1.setRotationPoint( 0F, 7.704449F, 0.009471932F+ 7F );
-		WoolBody2 = new ModelRenderer( this, 1, 103 );
+		WoolBody2 = new ModelRendererColored( this, 1, 103 );
 		WoolBody2.setTextureSize( 128, 128 );
 		WoolBody2.addBox( -5.5F, -6.5F, -5F, 11, 17, 8);
 		WoolBody2.setRotationPoint( 0F, 7.153107F, -8.771488F+ 7F );
-		WoolHips = new ModelRenderer( this, 85, 104 );
+		WoolHips = new ModelRendererColored( this, 85, 104 );
 		WoolHips.setTextureSize( 128, 128 );
 		WoolHips.addBox( -6F, -6F, -6F, 12, 16, 8);
 		WoolHips.setRotationPoint( 0F, 7.308489F, 11.23427F+ 7F );
@@ -95,7 +98,7 @@ public class ModelMerinoEwe extends ModelBase
 		LeftBackLeg.setTextureSize( 128, 128 );
 		LeftBackLeg.addBox( -1.5F, -0.5F, -1.5F, 3, 18, 3);
 		LeftBackLeg.setRotationPoint( 4.5F, 7.543364F, 9.238067F+ 7F );
-		LeftBackLegWool = new ModelRenderer( this, 99, 83 );
+		LeftBackLegWool = new ModelRendererColored( this, 99, 83 );
 		LeftBackLegWool.setTextureSize( 128, 128 );
 		LeftBackLegWool.addBox( -2F, -1F, -2.5F, 4, 14, 5);
 		LeftBackLegWool.setRotationPoint( 4.5F, 7.043413F, 9.245048F+ 7F );
@@ -103,7 +106,7 @@ public class ModelMerinoEwe extends ModelBase
 		LeftFrontLeg.setTextureSize( 128, 128 );
 		LeftFrontLeg.addBox( -1.5F, 0F, -1.5F, 3, 16, 3);
 		LeftFrontLeg.setRotationPoint( 4F, 9.149483F, -10.08116F+ 7F );
-		LeftFrontLegWool = new ModelRenderer( this, 98, 65 );
+		LeftFrontLegWool = new ModelRendererColored( this, 98, 65 );
 		LeftFrontLegWool.setTextureSize( 128, 128 );
 		LeftFrontLegWool.addBox( -2F, -2F, -2.5F, 4, 12, 5);
 		LeftFrontLegWool.setRotationPoint( 4F, 9.149483F, -10.08116F+ 7F );
@@ -163,15 +166,15 @@ public class ModelMerinoEwe extends ModelBase
 		RightEar2.setTextureSize( 128, 128 );
 		RightEar2.addBox( -1F, -0.5F, -1F, 1, 1, 1);
 		RightEar2.setRotationPoint( -6.166575F, -0.6877346F - 5.110041F, -20.50966F + 11.14083F );
-		HeadWool = new ModelRenderer( this, 1, 78 );
+		HeadWool = new ModelRendererColored( this, 1, 78 );
 		HeadWool.setTextureSize( 128, 128 );
 		HeadWool.addBox( -3.5F, -3F, -6F, 7, 2, 6);
 		HeadWool.setRotationPoint( 0F, -0.7184505F - 5.110041F, -17.17421F + 11.14083F );
-		NeckWool = new ModelRenderer( this, 59, 69 );
+		NeckWool = new ModelRendererColored( this, 59, 69 );
 		NeckWool.setTextureSize( 128, 128 );
 		NeckWool.addBox( -3.5F, -3F, -5F, 7, 11, 10);
 		NeckWool.setRotationPoint( 0F, 2.858284F - 5.110041F, -13.18523F + 11.14083F );
-		NeckWool2 = new ModelRenderer( this, 30, 75 );
+		NeckWool2 = new ModelRendererColored( this, 30, 75 );
 		NeckWool2.setTextureSize( 128, 128 );
 		NeckWool2.addBox( -4F, -3F, -2F, 8, 12, 4);
 		NeckWool2.setRotationPoint( 0F, 0.06732941F - 5.110041F, -17.128F + 11.14083F );
@@ -194,6 +197,20 @@ public class ModelMerinoEwe extends ModelBase
 
 	}
 
+	public void setWoolColor(float r, float g, float b)
+	{
+		WoolBody1.setColor(r, g, b);
+		WoolBody2.setColor(r, g, b);
+		WoolHips.setColor(r, g, b);
+		LeftBackLegWool.setColor(r, g, b);
+		LeftFrontLegWool.setColor(r, g, b);
+		NeckWool.setColor(r, g, b);
+		NeckWool2.setColor(r, g, b);
+		RightBackLegWool.setColor(r, g, b);
+		RightFrontLegWool.setColor(r, g, b);
+		HeadWool.setColor(r, g, b);
+	}
+	
 	public void render(Entity entityIn, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale)
 	{
 		Body.rotateAngleX = -0.03490658F;
@@ -235,19 +252,74 @@ public class ModelMerinoEwe extends ModelBase
 
 		this.setRotationAngles(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale, entityIn);
 
+		boolean isSleeping = false;
+		EntityAnimaniaSheep ech = (EntityAnimaniaSheep) entityIn;
+		if (ech.getSleeping()) {
+			isSleeping = true;
+		}
+		float sleepTimer = ech.getSleepTimer();
+
+		if (isSleeping) {
+
+			this.LeftFrontLeg.rotateAngleX = sleepTimer * -1.8F;
+			this.LeftFrontLeg.render(scale * .95F);
+			this.LeftFrontLegWool.rotateAngleX = sleepTimer * -1.8F;
+			this.LeftFrontLegWool.render(scale * .95F);
+			
+			this.RightFrontLeg.rotateAngleX = sleepTimer * -1.8F;
+			this.RightFrontLeg.render(scale * .97F);
+			this.LeftFrontLegWool.rotateAngleX = sleepTimer * -1.8F;
+			this.RightFrontLegWool.render(scale * .97F);
+			
+			this.LeftBackLeg.rotateAngleX = sleepTimer * 1.7F;
+			this.LeftBackLeg.render(scale * .97F);
+			this.LeftFrontLegWool.rotateAngleX = sleepTimer * -1.8F;
+			this.LeftBackLegWool.render(scale * .97F);
+			
+			this.RightBackLeg.rotateAngleX = sleepTimer * 1.75F;
+			this.RightBackLeg.render(scale * .95F);
+			this.LeftFrontLegWool.rotateAngleX = sleepTimer * -1.8F;
+			this.RightBackLegWool.render(scale * .95F);
+			
+			this.HeadNode.rotateAngleY = sleepTimer * -4.5F;
+
+			if (sleepTimer > -.28) {
+				this.Body.rotateAngleX = - (sleepTimer/3);
+			} else {
+				this.Body.rotateAngleX = + (sleepTimer/3);
+			}
+
+		} else {
+
+			this.LeftBackLeg.rotateAngleZ = 0;
+			this.LeftBackLeg.render(scale);
+			this.LeftBackLegWool.rotateAngleZ = 0;
+			this.LeftBackLegWool.render(scale);
+			
+			this.RightBackLeg.rotateAngleZ = 0;
+			this.RightBackLeg.render(scale);
+			this.RightBackLegWool.rotateAngleZ = 0;
+			this.RightBackLegWool.render(scale);
+			
+			this.LeftFrontLeg.rotateAngleZ = 0;
+			this.LeftFrontLeg.render(scale);
+			this.LeftFrontLegWool.render(scale);
+			this.LeftFrontLegWool.rotateAngleZ = 0;
+			
+			this.RightFrontLeg.rotateAngleZ = 0;
+			this.RightFrontLeg.render(scale);
+			this.RightFrontLegWool.rotateAngleZ = 0;
+			this.RightFrontLegWool.render(scale);
+			
+			this.HeadNode.rotateAngleY = 0F;
+			this.Body.rotateAngleX = 0F;
+
+		}
+		
 		Body.render(scale);
 		HeadNode.render(scale);
-		RightFrontLeg.render(scale);
-		LeftFrontLeg.render(scale);
 		Hips.render(scale);
-		LeftBackLeg.render(scale);
-		RightBackLeg.render(scale);
 		Tail.render(scale);
-
-		LeftFrontLegWool.render(scale);
-		RightFrontLegWool.render(scale);
-		RightBackLegWool.render(scale);
-		LeftBackLegWool.render(scale);
 		WoolHips.render(scale);
 		WoolBody1.render(scale);
 		WoolBody2.render(scale);
@@ -261,11 +333,13 @@ public class ModelMerinoEwe extends ModelBase
 		super.setLivingAnimations(entity, p_78086_2_, p_78086_3_, partialTickTime);
 
 		if (entity instanceof EntityEweMerino) {
-			this.HeadNode.rotationPointY = 4F + ((EntityEweMerino)entity).getHeadRotationPointY(partialTickTime) * 4.0F;
-			this.headRotationAngleX = ((EntityEweMerino)entity).getHeadRotationAngleX(partialTickTime);
+			EntityEweMerino entityEweMerino = (EntityEweMerino)entity;
+			this.HeadNode.rotationPointY = 4F + entityEweMerino.getHeadRotationPointY(partialTickTime) * 4.0F;
+			this.headRotationAngleX = entityEweMerino.getHeadRotationAngleX(partialTickTime);
 		} else if (entity instanceof EntityLambMerino) {
-			this.HeadNode.rotationPointY = 4F + ((EntityLambMerino)entity).getHeadRotationPointY(partialTickTime) * 4.0F;
-			this.headRotationAngleX = ((EntityLambMerino)entity).getHeadRotationAngleX(partialTickTime);
+			EntityLambMerino entityLambMerino = (EntityLambMerino)entity;
+			this.HeadNode.rotationPointY = 4F + entityLambMerino.getHeadRotationPointY(partialTickTime) * 4.0F;
+			this.headRotationAngleX = entityLambMerino.getHeadRotationAngleX(partialTickTime);
 		}
 	}
 
@@ -278,7 +352,16 @@ public class ModelMerinoEwe extends ModelBase
 		this.HeadNode.rotateAngleY = par4 / (180F / (float) Math.PI);
 		this.HeadNode.rotateAngleX = this.headRotationAngleX;
 
-		this.Tail.rotateAngleY = MathHelper.sin(par3 * 3.141593F * 0.05F) * MathHelper.sin(par3 * 3.141593F * .03F * 0.05F) * 0.15F * 3.141593F;
+		boolean isSleeping = false;
+		EntityAnimaniaSheep ech = (EntityAnimaniaSheep) entity;
+		if (ech.getSleeping()) {
+			isSleeping = true;
+		}
+		if (!isSleeping) {
+			this.Tail.rotateAngleY = MathHelper.sin(par3 * 3.141593F * 0.05F) * MathHelper.sin(par3 * 3.141593F * .03F * 0.05F) * 0.15F * 3.141593F;
+		} else {
+			this.Tail.rotateAngleY = MathHelper.sin(1 * 3.141593F * 0.05F) * MathHelper.sin(1 * 3.141593F * .03F * 0.05F) * 0.15F * 3.141593F;
+		}
 
 		this.LeftBackLeg.rotateAngleX =  MathHelper.cos(par1 * 0.6662F) * 1.2F * par2; //Left Back
 		this.LeftBackLegWool.rotateAngleX = MathHelper.cos(par1 * 0.6662F) * 1.2F * par2;//Left Back

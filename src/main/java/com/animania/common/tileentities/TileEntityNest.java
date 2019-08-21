@@ -2,30 +2,22 @@ package com.animania.common.tileentities;
 
 import javax.annotation.Nullable;
 
-import com.animania.common.entities.AnimaniaType;
+import com.animania.api.interfaces.AnimaniaType;
 import com.animania.common.entities.chickens.ChickenType;
 import com.animania.common.entities.peacocks.PeacockType;
 import com.animania.common.handler.ItemHandler;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.common.tileentities.handler.ItemHandlerNest;
-import com.google.common.collect.Iterables;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
-import com.mojang.authlib.properties.Property;
 
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
-import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
-import net.minecraft.util.StringUtils;
 import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.items.CapabilityItemHandler;
 
 public class TileEntityNest extends TileEntity implements ITickable
@@ -38,7 +30,7 @@ public class TileEntityNest extends TileEntity implements ITickable
 
 	public TileEntityNest()
 	{
-		this.itemHandler = new ItemHandlerNest();
+		this.itemHandler = new ItemHandlerNest(this);
 	}
 
 	public NestContent getNestContent()
@@ -66,7 +58,7 @@ public class TileEntityNest extends TileEntity implements ITickable
 	public void readFromNBT(NBTTagCompound compound)
 	{
 		super.readFromNBT(compound);
-		this.itemHandler = new ItemHandlerNest();
+		this.itemHandler = new ItemHandlerNest(this);
 		this.itemHandler.deserializeNBT(compound.getCompoundTag("items"));
 		try
 		{
@@ -86,6 +78,9 @@ public class TileEntityNest extends TileEntity implements ITickable
 		{
 		}
 	}
+	
+
+
 
 	@Override
 	public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt)

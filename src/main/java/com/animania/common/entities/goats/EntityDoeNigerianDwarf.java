@@ -11,9 +11,10 @@ public class EntityDoeNigerianDwarf extends EntityDoeBase
 	{
 		super(worldIn);
 		this.goatType = GoatType.NIGERIAN_DWARF;
-		this.setSize(1.1F, 1.2F);
-		this.dropRaw = ItemHandler.rawChevon;
-		this.dropCooked = ItemHandler.cookedChevon;
+		this.setSize(1.1F, 1.2F); 
+		this.width = 1.1F;
+		this.height = 1.2F;
+
 	}
 	
 	@Override

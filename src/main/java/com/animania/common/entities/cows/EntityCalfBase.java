@@ -1,17 +1,8 @@
 package com.animania.common.entities.cows;
 
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.cows.ai.EntityAIFollowParentCows;
-import com.animania.common.entities.cows.ai.EntityAIPanicCows;
-import com.animania.compat.top.providers.entity.TOPInfoProviderChild;
-import com.animania.config.AnimaniaConfig;
-import com.google.common.base.Optional;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityAgeable;
@@ -34,7 +25,16 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProviderChild
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IChild;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.entities.cows.ai.EntityAIFollowParentCows;
+import com.animania.compat.top.providers.entity.TOPInfoProviderChild;
+import com.animania.config.AnimaniaConfig;
+import com.google.common.base.Optional;
+
+public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProviderChild, IChild
 {
 
 	protected static final DataParameter<Optional<UUID>> PARENT_UNIQUE_ID = EntityDataManager.<Optional<UUID>>createKey(EntityCalfBase.class, DataSerializers.OPTIONAL_UNIQUE_ID);
@@ -44,10 +44,11 @@ public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProvider
 	public EntityCalfBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.6F, 3.6F);
+		this.setSize(1.6F, 3.6F); 
+		this.width = 1.6F;
+		this.height = 3.6F;
 		this.stepHeight = 1.1F;
 		this.tasks.addTask(1, new EntityAIFollowParentCows(this, 1.1D));
-		this.tasks.addTask(1, new EntityAIPanicCows(this, 2.0D));
 		this.ageTimer = 0;
 		this.cowType = CowType.FRIESIAN;
 		this.gender = EntityGender.CHILD;
@@ -164,8 +165,7 @@ public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProvider
 		else
 			num = 24;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.mooCalf1;
@@ -180,8 +180,7 @@ public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProvider
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0)
 			return ModSoundEvents.mooCalf1;
@@ -194,8 +193,7 @@ public class EntityCalfBase extends EntityAnimaniaCow implements TOPInfoProvider
 	@Override
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0)
 			return ModSoundEvents.mooCalf1;

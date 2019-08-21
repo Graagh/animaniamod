@@ -1,18 +1,9 @@
 package com.animania.common.entities.horses;
 
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.horses.ai.EntityAIFollowParentHorses;
-import com.animania.compat.top.providers.entity.TOPInfoProviderBase;
-import com.animania.config.AnimaniaConfig;
-import com.google.common.base.Optional;
-import com.google.common.collect.Sets;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.EntityAgeable;
@@ -38,7 +29,17 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProviderBase
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IChild;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.entities.horses.ai.EntityAIFollowParentHorses;
+import com.animania.compat.top.providers.entity.TOPInfoProviderBase;
+import com.animania.config.AnimaniaConfig;
+import com.google.common.base.Optional;
+import com.google.common.collect.Sets;
+
+public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProviderBase, IChild
 {	
 	private static final DataParameter<Integer> COLOR_NUM = EntityDataManager.<Integer>createKey(EntityFoalBase.class, DataSerializers.VARINT);
 	private static final Set<Item> TEMPTATION_ITEMS = Sets.newHashSet(new Item[] {Items.WHEAT, Items.APPLE, Items.CARROT});
@@ -52,7 +53,9 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 	public EntityFoalBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.6F, 3.0F);
+		this.setSize(2.2F, 3.0F); 
+		this.width = 2.2F;
+		this.height = 3.0F;
 		this.stepHeight = 1.1F;
 		this.tasks.addTask(1, new EntityAIFollowParentHorses(this, 1.1D));
 		this.ageTimer = 0;
@@ -141,8 +144,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 			num = 60;
 		}
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0) {
 			return ModSoundEvents.horseliving1;
@@ -161,8 +163,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0) {
 			return ModSoundEvents.horsehurt1;
@@ -175,8 +176,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 
 		if (chooser == 0) {
 			return ModSoundEvents.horsehurt1;
@@ -192,7 +192,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 		{
 			this.playSound(soundevent, this.getSoundVolume(), this.getSoundPitch() + .2F - (this.getEntityAge() * 2));
 		}
@@ -279,6 +279,9 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 			this.setAge(1);
 		}
 		
+		if (this.getLeashed() && this.getSleeping())
+			this.setSleeping(false);
+		
 		if (this.world.isRemote)
 		{
 			this.eatTimer = Math.max(0, this.eatTimer - 1);
@@ -362,7 +365,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 
 				}
 			}
-
+			
 		}
 		
 		if (this.happyTimer > -1) {
@@ -370,7 +373,7 @@ public class EntityFoalBase extends EntityAnimaniaHorse implements TOPInfoProvid
 			if (happyTimer == 0) {
 				happyTimer = 60;
 
-				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles) {
+				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles && !this.getSleeping() && this.getHandFed()) {
 					double d = rand.nextGaussian() * 0.001D;
 					double d1 = rand.nextGaussian() * 0.001D;
 					double d2 = rand.nextGaussian() * 0.001D;

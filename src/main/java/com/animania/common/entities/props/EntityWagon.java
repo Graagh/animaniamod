@@ -55,7 +55,6 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import scala.util.Random;
 
 public class EntityWagon extends AnimatedEntityBase implements IInventoryChangedListener
 {
@@ -91,7 +90,9 @@ public class EntityWagon extends AnimatedEntityBase implements IInventoryChanged
 	public EntityWagon(World par1World) {
 		super(par1World);
 		this.preventEntitySpawning = true;
-		this.setSize(2.5F, 1.2F);
+		this.setSize(2.5F, 1.2F); 
+		this.width = 2.5F;
+		this.height = 1.2F;
 		this.stepHeight = 1.2F;
 		this.puller = null;
 		this.pulled = false;
@@ -602,7 +603,7 @@ public class EntityWagon extends AnimatedEntityBase implements IInventoryChanged
 			}
 		}
 
-		if (this.puller != null && (Math.abs(this.puller.posX - this.posX) > 6 || Math.abs(this.puller.posZ - this.posZ) > 6)) {
+		if (this.puller != null && (Math.abs(this.puller.posX - this.posX) > 7 || Math.abs(this.puller.posZ - this.posZ) > 7)) {
 			this.pulled = false;
 			this.puller = null;
 			this.setPullerType(0);
@@ -615,43 +616,11 @@ public class EntityWagon extends AnimatedEntityBase implements IInventoryChanged
 			double deltaAngle = -Math.atan2(this.puller.posX - this.posX, this.puller.posZ - this.posZ);
 
 			Vec3d vec = new Vec3d(this.puller.posX, this.puller.posY, this.puller.posZ).subtract(new Vec3d(this.posX, this.posY, this.posZ)).add(new Vec3d(0.0D, 0.0D, -3.2D).rotateYaw((float)-deltaAngle));
-			this.motionX = vec.x/1.01;
+			this.motionX = vec.x/1;
 			this.motionY = vec.y;
-			this.motionZ = vec.z/1.01;
+			this.motionZ = vec.z/1;
 			move(MoverType.SELF, this.motionX, this.motionY, this.motionZ);
 		}
-
-		//TODO remove?
-		/*
-		List<Entity> list = this.world.getEntitiesInAABBexcluding(this, this.getEntityBoundingBox().grow(0.20000000298023224D, -0.009999999776482582D, 0.20000000298023224D), EntitySelectors.getTeamCollisionPredicate(this));
-
-		if (!list.isEmpty())
-		{
-			boolean flag = !this.world.isRemote;
-
-			for (int j = 0; j < list.size(); ++j)
-			{
-				Entity entity = list.get(j);
-
-				if (entity instanceof EntityAnimal) {
-
-					EntityAnimal entityanimal = (EntityAnimal) entity;
-					if (!entity.isPassenger(this))
-					{
-						if (flag && this.getPassengers().size() < 2 && this.puller != entity && entityanimal.getLeashed() && entityanimal.getLeashHolder() instanceof EntityPlayer && !entity.isRiding() && entity.width < this.width && entity instanceof EntityLivingBase && !(entity instanceof EntityPlayer))
-						{
-							entity.startRiding(this);
-						}
-						else
-						{
-							this.applyEntityCollision(entity);
-						}
-					}
-				}
-			}
-		}
-		 */
-
 
 
 		if (!this.pulled)
@@ -832,10 +801,6 @@ public class EntityWagon extends AnimatedEntityBase implements IInventoryChanged
 		double movZ = Math.abs(this.posZ - this.prevPosZ);
 
 		if (entityIn == this.puller) {
-			this.puller.motionX = 0;
-			this.puller.motionZ = 0;
-			this.motionX = 0;
-			this.motionZ = 0;
 			return null;
 		} else if (this.pulled) {
 			return null;
@@ -1057,15 +1022,14 @@ public class EntityWagon extends AnimatedEntityBase implements IInventoryChanged
 	{
 		BlockPos.MutableBlockPos blockpos$mutableblockpos = new BlockPos.MutableBlockPos(MathHelper.floor(this.posX), 0, MathHelper.floor(this.posZ));
 
-		Random rand = new Random();
 		long time = this.getEntityWorld().getWorldTime() % 24000;
 
 		if (this.world.isBlockLoaded(blockpos$mutableblockpos))
 		{
 			blockpos$mutableblockpos.setY(MathHelper.floor(this.posY + (double)this.getEyeHeight()));
 
-			if (rand.nextInt(32) == 0 && time > 13000 && sleepTimer == 0)  {
-				lastLighting = 85 + rand.nextInt(22);
+			if (Animania.RANDOM.nextInt(32) == 0 && time > 13000 && sleepTimer == 0)  {
+				lastLighting = 85 + Animania.RANDOM.nextInt(22);
 				return this.world.getCombinedLight(blockpos$mutableblockpos, 0) + lastLighting;
 
 			} else if (sleepTimer == 0 || time < 13000) {

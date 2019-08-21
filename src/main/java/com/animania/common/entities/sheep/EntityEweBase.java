@@ -1,17 +1,9 @@
 package com.animania.common.entities.sheep;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.handler.BlockHandler;
-import com.animania.common.helper.AnimaniaHelper;
-import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
-import com.animania.config.AnimaniaConfig;
 
 import mcjty.theoneprobe.api.IProbeHitEntityData;
 import mcjty.theoneprobe.api.IProbeInfo;
@@ -25,6 +17,7 @@ import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.init.SoundEvents;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
@@ -40,11 +33,23 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeModContainer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
+import net.minecraftforge.fluids.FluidActionResult;
+import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fluids.UniversalBucket;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProviderMateable
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IMateable;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.handler.BlockHandler;
+import com.animania.common.helper.AnimaniaHelper;
+import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
+import com.animania.config.AnimaniaConfig;
+
+public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProviderMateable, IMateable
 {
 	protected ItemStack milk = UniversalBucket.getFilledBucket(ForgeModContainer.getInstance().universalBucket, BlockHandler.fluidMilkSheep);
 	public int dryTimer;
@@ -56,7 +61,9 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 	public EntityEweBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.0F, 1.0F);
+		this.setSize(1.0F, 1.0F); 
+		this.width = 1.0F;
+		this.height = 1.0F;
 		this.stepHeight = 1.1F;
 		this.gender = EntityGender.FEMALE;
 		this.mateable = true;
@@ -249,8 +256,7 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 		else
 			num = 40;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.sheepLiving1;
@@ -274,8 +280,7 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
+		int chooser = Animania.RANDOM.nextInt(2);
 
 		if (chooser == 0)
 			return ModSoundEvents.sheepHurt1;
@@ -286,8 +291,7 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 	@Override
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(3);
+		int chooser = Animania.RANDOM.nextInt(3);
 		if (chooser == 0)
 			return ModSoundEvents.sheepHurt1;
 		else
@@ -299,7 +303,7 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume(), this.getSoundPitch());
 	}
 
@@ -441,31 +445,32 @@ public class EntityEweBase extends EntityAnimaniaSheep implements TOPInfoProvide
 		ItemStack stack = player.getHeldItem(hand);
 		EntityPlayer entityplayer = player;
 
-		if (this.getFed() && this.getWatered() && stack != ItemStack.EMPTY && stack.getItem() == Items.BUCKET && this.getHasKids())
+		if (this.getFed() && this.getWatered() && stack != ItemStack.EMPTY && AnimaniaHelper.isEmptyFluidContainer(stack) && this.getHasKids())
 		{
 			player.playSound(SoundEvents.ENTITY_COW_MILK, 1.0F, 1.0F);
+
+			ItemStack one = stack.copy();
+			one.setCount(1);
+			FluidActionResult result;
+			result = FluidUtil.tryFillContainer(one, FluidUtil.getFluidHandler(milk.copy()), 1000, player, true);
+
+			ItemStack filled;;
+			if (!result.success)
+			{
+				Item item = stack.getItem();
+				if (item == Items.BUCKET)
+					filled = milk.copy();
+				else if(Loader.isModLoaded("ceramics") && item == Item.getByNameOrId("ceramics:clay_bucket"))
+					filled = new ItemStack(Item.getByNameOrId("ceramics:clay_bucket"), 1, 1);
+				else
+					return false;
+			}
+			else
+				filled = result.result;
 			stack.shrink(1);
-
-			if (stack.getCount() == 0)
-				player.setHeldItem(hand, this.milk.copy());
-			else if (!player.inventory.addItemStackToInventory(this.milk.copy()))
-				player.dropItem(this.milk.copy(), false);
-
+			AnimaniaHelper.addItem(player, filled);
 			this.setWatered(false);
 
-			return true;
-		}
-		else if (stack != ItemStack.EMPTY && stack.getItem() == Items.WATER_BUCKET)
-		{
-			if (stack.getCount() == 1 && !player.capabilities.isCreativeMode)
-				player.setHeldItem(hand, new ItemStack(Items.BUCKET));
-			else if (!player.capabilities.isCreativeMode && !player.inventory.addItemStackToInventory(new ItemStack(Items.BUCKET)))
-				player.dropItem(new ItemStack(Items.BUCKET), false);
-
-			this.eatTimer = 40;
-			this.entityAIEatGrass.startExecuting();
-			this.setWatered(true);
-			this.setInLove(player);
 			return true;
 		}
 		else

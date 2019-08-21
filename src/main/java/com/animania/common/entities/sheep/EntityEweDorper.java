@@ -19,8 +19,6 @@ public class EntityEweDorper extends EntityEweBase
 	{
 		super(worldIn);
 		this.sheepType = SheepType.DORPER;
-		this.dropRaw = ItemHandler.rawMutton;
-		this.dropCooked = ItemHandler.cookedMutton;
 	}
 	
 	@Override
@@ -42,9 +40,15 @@ public class EntityEweDorper extends EntityEweBase
 		int i = 1 + this.rand.nextInt(2);
 		
 		List<ItemStack> woolDrops = new ArrayList<ItemStack>();
-		woolDrops.add(new ItemStack((Blocks.WOOL), i));
+		woolDrops.add(new ItemStack((Blocks.WOOL), i, this.getDyeColor().getMetadata()));
 		
 		return woolDrops;
+	}
+	
+	@Override
+	public boolean isDyeable()
+	{
+		return true;
 	}
 	
 }

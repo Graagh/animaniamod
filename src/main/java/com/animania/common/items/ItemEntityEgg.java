@@ -3,14 +3,13 @@ package com.animania.common.items;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.AnimaniaType;
+import com.animania.api.interfaces.ISpawnable;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.AnimaniaType;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.ISpawnable;
 import com.animania.common.entities.RandomAnimalType;
 import com.animania.common.entities.chickens.ChickenType;
 import com.animania.common.entities.cows.CowType;
@@ -85,39 +84,13 @@ public class ItemEntityEgg extends Item
 
 		if (this.gender == EntityGender.RANDOM)
 		{
-			Random rand = new Random();
-			if (type instanceof CowType)
-			{
-				entity = EntityGender.getEntity(CowType.values()[rand.nextInt(((CowType) type).values().length)], gender, world);
-			}
-			if (type instanceof PigType)
-			{
-				entity = EntityGender.getEntity(PigType.values()[rand.nextInt(((PigType) type).values().length)], gender, world);
-			}
-			if (type instanceof ChickenType)
-			{
-				entity = EntityGender.getEntity(ChickenType.values()[rand.nextInt(((ChickenType) type).values().length)], gender, world);
-			}
-			if(type instanceof GoatType)
-			{
-				entity = EntityGender.getEntity(GoatType.values()[rand.nextInt(((GoatType) type).values().length)], gender, world);
-			}
-			if(type instanceof PeacockType)
-			{
-				entity = EntityGender.getEntity(PeacockType.values()[rand.nextInt(((PeacockType) type).values().length)], gender, world);
-			}
-			if(type instanceof RabbitType)
-			{
-				entity = EntityGender.getEntity(RabbitType.values()[rand.nextInt(((RabbitType) type).values().length)], gender, world);
-			}
-			if(type instanceof SheepType)
-			{
-				entity = EntityGender.getEntity(SheepType.values()[rand.nextInt(((SheepType) type).values().length)], gender, world);
-			}
-			if(type instanceof RandomAnimalType)
-			{
+			Class<? extends AnimaniaType> clazz = this.type.getClass();
+			AnimaniaType[] types = clazz.getEnumConstants();
+
+			if (type instanceof RandomAnimalType)
 				entity = EntityGender.getEntity(type, gender, world);
-			}
+			else
+				entity = EntityGender.getEntity(types[Animania.RANDOM.nextInt(types.length)], gender, world);
 		}
 		else
 		{
@@ -134,8 +107,7 @@ public class ItemEntityEgg extends Item
 			if (!playerIn.isCreative())
 				stack.shrink(1);
 
-			Random rand = new Random();
-			world.playSound(null, playerIn.posX, playerIn.posY, playerIn.posZ, ModSoundEvents.combo, SoundCategory.PLAYERS, 0.8F, ((rand.nextFloat() - rand.nextFloat()) * 0.2F + 1.0F) / 0.8F);
+			world.playSound(null, playerIn.posX, playerIn.posY, playerIn.posZ, ModSoundEvents.combo, SoundCategory.PLAYERS, 0.8F, ((Animania.RANDOM.nextFloat() - Animania.RANDOM.nextFloat()) * 0.2F + 1.0F) / 0.8F);
 			entity.rotationYawHead = entity.rotationYaw;
 			entity.renderYawOffset = entity.rotationYaw;
 			world.spawnEntity(entity);
@@ -157,12 +129,16 @@ public class ItemEntityEgg extends Item
 	}
 
 	@Override
+	public String getItemStackDisplayName(ItemStack stack)
+	{
+		return I18n.translateToLocal("entity.animania:" + stack.getItem().getRegistryName().getResourcePath().replace("entity_egg_", "") + ".name");
+	}
+	
+	@Override
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn)
 	{
 		tooltip.add(TextFormatting.GOLD + I18n.translateToLocal("item.animania_entity_egg.desc1") + " " + TextFormatting.DARK_GRAY + I18n.translateToLocal("item.animania_entity_egg.desc2"));
 	}
-	
-	
 
 	@SideOnly(Side.CLIENT)
 	public static class Color implements IItemColor

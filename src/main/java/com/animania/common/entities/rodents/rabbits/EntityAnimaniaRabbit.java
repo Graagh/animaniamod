@@ -5,16 +5,21 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.AnimaniaAnimal;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.ISpawnable;
-import com.animania.common.entities.genericAi.EntityAnimaniaAvoidWater;
-import com.animania.common.entities.rodents.ai.EntityAIFindFoodRabbits;
-import com.animania.common.entities.rodents.ai.EntityAIFindWater;
-import com.animania.common.entities.rodents.ai.EntityAIRodentEat;
-import com.animania.common.entities.rodents.ai.EntityAISwimmingRodents;
-import com.animania.common.entities.rodents.ai.EntityAIWatchClosestFromSide;
+import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IAnimaniaAnimalBase;
+import com.animania.common.entities.generic.ai.GenericAIAvoidEntity;
+import com.animania.common.entities.generic.ai.GenericAIEatGrass;
+import com.animania.common.entities.generic.ai.GenericAIFindFood;
+import com.animania.common.entities.generic.ai.GenericAIFindWater;
+import com.animania.common.entities.generic.ai.GenericAILookIdle;
+import com.animania.common.entities.generic.ai.GenericAIPanic;
+import com.animania.common.entities.generic.ai.GenericAITempt;
+import com.animania.common.entities.generic.ai.GenericAIWanderAvoidWater;
+import com.animania.common.entities.generic.ai.GenericAIWatchClosest;
+import com.animania.common.entities.rodents.ai.EntityAISleepRabbits;
+import com.animania.common.handler.DamageSourceHandler;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.common.items.ItemEntityEgg;
 import com.animania.config.AnimaniaConfig;
@@ -23,22 +28,30 @@ import com.google.common.collect.Sets;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockCarrot;
+import net.minecraft.block.BlockFlower;
+import net.minecraft.block.BlockTallGrass;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityAIAttackMelee;
-import net.minecraft.entity.ai.EntityAIAvoidEntity;
+import net.minecraft.entity.ai.EntityAIBase;
+import net.minecraft.entity.ai.EntityAIFindEntityNearestPlayer;
 import net.minecraft.entity.ai.EntityAIHurtByTarget;
+import net.minecraft.entity.ai.EntityAILeapAtTarget;
 import net.minecraft.entity.ai.EntityAILookIdle;
 import net.minecraft.entity.ai.EntityAIMoveToBlock;
-import net.minecraft.entity.ai.EntityAIPanic;
-import net.minecraft.entity.ai.EntityAITempt;
+import net.minecraft.entity.ai.EntityAINearestAttackableTarget;
+import net.minecraft.entity.ai.EntityAISwimming;
+import net.minecraft.entity.ai.EntityAITarget;
+import net.minecraft.entity.ai.EntityAITasks.EntityAITaskEntry;
+import net.minecraft.entity.ai.EntityAIWander;
 import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
+import net.minecraft.entity.ai.EntityAIWatchClosest;
 import net.minecraft.entity.ai.EntityJumpHelper;
 import net.minecraft.entity.ai.EntityMoveHelper;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.passive.EntityRabbit;
 import net.minecraft.entity.passive.EntityWolf;
@@ -67,7 +80,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, AnimaniaAnimal
+public class EntityAnimaniaRabbit extends EntityRabbit implements IAnimaniaAnimalBase
 {
 
 	public static final Set<Item> TEMPTATION_ITEMS = Sets.newHashSet(AnimaniaHelper.getItemArray(AnimaniaConfig.careAndFeeding.rabbitFood));
@@ -77,7 +90,9 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	private static final DataParameter<Integer> COLOR_NUM = EntityDataManager.<Integer>createKey(EntityAnimaniaRabbit.class, DataSerializers.VARINT);
 	protected static final DataParameter<Integer> AGE = EntityDataManager.<Integer>createKey(EntityAnimaniaRabbit.class, DataSerializers.VARINT);
 	protected static final DataParameter<Boolean> HANDFED = EntityDataManager.<Boolean>createKey(EntityAnimaniaRabbit.class, DataSerializers.BOOLEAN);
-	private static final String[] RABBIT_TEXTURES = new String[] {"black", "brown", "golden", "olive", "patch_black", "patch_brown", "patch_grey"};
+	protected static final DataParameter<Boolean> SLEEPING = EntityDataManager.<Boolean>createKey(EntityAnimaniaRabbit.class, DataSerializers.BOOLEAN);
+	protected static final DataParameter<Float> SLEEPTIMER = EntityDataManager.<Float>createKey(EntityAnimaniaRabbit.class, DataSerializers.FLOAT);
+	private static final String[] RABBIT_TEXTURES = new String[] { "black", "brown", "golden", "olive", "patch_black", "patch_brown", "patch_grey" };
 
 	protected int happyTimer;
 	public int blinkTimer;
@@ -86,9 +101,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	protected int wateredTimer;
 	protected int damageTimer;
 	public RabbitType rabbitType;
-	protected Item dropRaw = Items.RABBIT;
-	protected Item dropCooked = Items.COOKED_RABBIT;
-	public EntityAIRodentEat entityAIEatGrass;
+	public GenericAIEatGrass<EntityAnimaniaRabbit> entityAIEatGrass;
 	protected boolean mateable = false;
 	protected EntityGender gender;
 	private ResourceLocation resourceLocation;
@@ -99,27 +112,49 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	private boolean wasOnGround;
 	private int currentMoveTypeDuration;
 
+	private boolean mateUuidCached = false;
+	private UUID mateUUID = null;
+
 	public EntityAnimaniaRabbit(World worldIn)
 	{
 		super(worldIn);
 		this.tasks.taskEntries.clear();
-		this.entityAIEatGrass = new EntityAIRodentEat(this);
-		this.tasks.addTask(3, new EntityAIPanic(this, 2.5D));
-		if (!AnimaniaConfig.gameRules.ambianceMode) {
-			this.tasks.addTask(2, new EntityAIFindWater(this, 1.4D));
-			this.tasks.addTask(3, new EntityAIFindFoodRabbits(this, 1.4D));
-		}
-		this.tasks.addTask(4, new EntityAIWanderAvoidWater(this, 1.8D));
-		this.tasks.addTask(5, new EntityAISwimmingRodents(this));
-		this.tasks.addTask(7, new EntityAITempt(this, 1.25D, false, EntityAnimaniaRabbit.TEMPTATION_ITEMS));
-		this.tasks.addTask(8, this.entityAIEatGrass);
-		this.tasks.addTask(9, new EntityAIAvoidEntity(this, EntityWolf.class, 10.0F, 3.0D, 3.5D));
-		this.tasks.addTask(9, new EntityAIAvoidEntity(this, EntityMob.class, 10.0F, 2.2D, 2.2D));
-		this.tasks.addTask(10, new EntityAIWatchClosestFromSide(this, EntityPlayer.class, 6.0F));
-		this.tasks.addTask(11, new EntityAILookIdle(this));
-		this.tasks.addTask(11, new EntityAnimaniaAvoidWater(this));
+		this.entityAIEatGrass = new GenericAIEatGrass<EntityAnimaniaRabbit>(this, false);
 
-		this.targetTasks.addTask(1, new EntityAIHurtByTarget(this, true, EntityPlayer.class));
+		if (!AnimaniaConfig.gameRules.ambianceMode)
+		{
+			this.tasks.addTask(2, new GenericAIFindWater<EntityAnimaniaRabbit>(this, 1.4D, entityAIEatGrass, EntityAnimaniaRabbit.class, true));
+			this.tasks.addTask(3, new GenericAIFindFood<EntityAnimaniaRabbit>(this, 1.4D, entityAIEatGrass, true));
+		}
+
+		if (!this.getCustomNameTag().equals("Killer"))
+		{
+			this.tasks.addTask(3, new GenericAIPanic<EntityAnimaniaRabbit>(this, 2.5D));
+			this.tasks.addTask(4, new GenericAIWanderAvoidWater(this, 1.8D));
+			this.tasks.addTask(5, new EntityAISwimming(this));
+			this.tasks.addTask(7, new GenericAITempt<EntityAnimaniaRabbit>(this, 1.25D, false, EntityAnimaniaRabbit.TEMPTATION_ITEMS));
+			this.tasks.addTask(8, this.entityAIEatGrass);
+			this.tasks.addTask(9, new GenericAIAvoidEntity<EntityWolf>(this, EntityWolf.class, 24.0F, 3.0D, 3.5D));
+			this.tasks.addTask(9, new GenericAIAvoidEntity<EntityMob>(this, EntityMob.class, 16.0F, 2.2D, 2.2D));
+			this.tasks.addTask(10, new GenericAIWatchClosest(this, EntityPlayer.class, 6.0F));
+			this.tasks.addTask(11, new GenericAILookIdle<EntityAnimaniaRabbit>(this));
+			if (AnimaniaConfig.gameRules.animalsSleep)
+			{
+				this.tasks.addTask(12, new EntityAISleepRabbits(this, 0.8));
+			}
+		}
+		else
+		{
+			this.tasks.addTask(1, new EntityAILeapAtTarget(this, 0.7F));
+			this.tasks.addTask(2, new EntityAIAttackMelee(this, 2.0D, true));
+			this.tasks.addTask(3, new GenericAIWanderAvoidWater(this, 1.8D));
+			this.tasks.addTask(4, new EntityAIWatchClosest(this, EntityPlayer.class, 20.0F));
+			this.targetTasks.addTask(1, new EntityAIHurtByTarget(this, false, new Class[0]));
+			this.targetTasks.addTask(2, new EntityAINearestAttackableTarget<EntityPlayer>(this, EntityPlayer.class, true));
+			this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(50.0D);
+			this.setHealth(50);
+		}
+
 		this.fedTimer = AnimaniaConfig.careAndFeeding.feedTimer + this.rand.nextInt(100);
 		this.wateredTimer = AnimaniaConfig.careAndFeeding.waterTimer + this.rand.nextInt(100);
 		this.happyTimer = 60;
@@ -131,17 +166,72 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.setMovementSpeed(0.0D);
 	}
 
+	protected void resetAI()
+	{
+
+		this.tasks.taskEntries.clear();
+		this.tasks.addTask(1, new EntityAILeapAtTarget(this, 0.7F));
+		this.tasks.addTask(2, new EntityAIAttackMelee(this, 2.0D, true));
+		this.tasks.addTask(3, new GenericAIWanderAvoidWater(this, 1.8D));
+		this.tasks.addTask(4, new EntityAIWatchClosest(this, EntityPlayer.class, 10.0F));
+		this.targetTasks.addTask(1, new EntityAIHurtByTarget(this, false, new Class[0]));
+		this.targetTasks.addTask(2, new EntityAINearestAttackableTarget(this, EntityPlayer.class, true));
+		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(50.0D);
+		this.setHealth(50);
+	}
+
 	protected void applyEntityAttributes()
 	{
 		super.applyEntityAttributes();
 		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(3.0D);
 		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.34000001192092896D);
 	}
-	
+
 	@Override
 	public void setPosition(double x, double y, double z)
 	{
 		super.setPosition(x, y, z);
+	}
+
+	@Override
+	public void setAttackTarget(@Nullable EntityLivingBase entitylivingbaseIn)
+	{
+		super.setAttackTarget(entitylivingbaseIn);
+	}
+
+	@Override
+	public boolean attackEntityFrom(DamageSource source, float amount)
+	{
+
+		if (this.getSleeping())
+		{
+			this.setSleeping(false);
+		}
+
+		if (this.isEntityInvulnerable(source))
+			return false;
+		else
+			return super.attackEntityFrom(source, amount);
+	}
+
+	@Override
+	public boolean attackEntityAsMob(Entity entityIn)
+	{
+		boolean flag = entityIn.attackEntityFrom(DamageSourceHandler.killerRabbitDamage, 5.0F);
+		entityIn.attackEntityFrom(DamageSourceHandler.killerRabbitDamage, 5.0F);
+
+		if (flag)
+		{
+			this.applyEnchantments(this, entityIn);
+		}
+
+		// Custom Knockback
+		if (entityIn instanceof EntityPlayer)
+		{
+			((EntityLivingBase) entityIn).knockBack(this, 1, this.posX - entityIn.posX, this.posZ - entityIn.posZ);
+		}
+
+		return flag;
 	}
 
 	protected float getJumpUpwardsMotion()
@@ -185,14 +275,14 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 		if (!this.world.isRemote)
 		{
-			this.world.setEntityState(this, (byte)1);
+			this.world.setEntityState(this, (byte) 1);
 		}
 	}
 
 	@SideOnly(Side.CLIENT)
 	public float setJumpCompletion(float p_175521_1_)
 	{
-		return this.jumpDuration == 0 ? 0.0F : ((float)this.jumpTicks + p_175521_1_) / (float)this.jumpDuration;
+		return this.jumpDuration == 0 ? 0.0F : ((float) this.jumpTicks + p_175521_1_) / (float) this.jumpDuration;
 	}
 
 	public void setMovementSpeed(double newSpeed)
@@ -207,7 +297,9 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 		if (jumping)
 		{
-			//this.playSound(this.getJumpSound(), this.getSoundVolume(), ((this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F + 1.0F) * 0.8F);
+			// this.playSound(this.getJumpSound(), this.getSoundVolume(),
+			// ((this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F + 1.0F) *
+			// 0.8F);
 		}
 	}
 
@@ -228,9 +320,12 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	protected void entityInit()
 	{
 		super.entityInit();
-		if (this instanceof EntityRabbitBuckLop || this instanceof EntityRabbitDoeLop || this instanceof EntityRabbitKitLop) {
+		if (this instanceof EntityRabbitBuckLop || this instanceof EntityRabbitDoeLop || this instanceof EntityRabbitKitLop)
+		{
 			this.dataManager.register(EntityAnimaniaRabbit.COLOR_NUM, Integer.valueOf(rand.nextInt(7)));
-		} else {
+		}
+		else
+		{
 			this.dataManager.register(EntityAnimaniaRabbit.COLOR_NUM, 0);
 		}
 		this.dataManager.register(EntityAnimaniaRabbit.FED, Boolean.valueOf(true));
@@ -238,12 +333,14 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.dataManager.register(EntityAnimaniaRabbit.WATERED, Boolean.valueOf(true));
 		this.dataManager.register(EntityAnimaniaRabbit.MATE_UNIQUE_ID, Optional.<UUID>absent());
 		this.dataManager.register(EntityAnimaniaRabbit.AGE, Integer.valueOf(0));
+		this.dataManager.register(EntityAnimaniaRabbit.SLEEPING, Boolean.valueOf(false));
+		this.dataManager.register(EntityAnimaniaRabbit.SLEEPTIMER, Float.valueOf(0.0F));
 	}
 
 	@Override
 	protected ResourceLocation getLootTable()
 	{
-		return null;
+		return this instanceof EntityRabbitKitBase ? null : this.rabbitType.isPrime ? new ResourceLocation(Animania.MODID, "rabbit_prime") : new ResourceLocation(Animania.MODID, "rabbit_regular");
 	}
 
 	public void updateAITasks()
@@ -264,7 +361,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 				this.checkLandingDelay();
 			}
 
-			if (/*this.getRabbitType() == 99 &&*/ this.currentMoveTypeDuration == 0)
+			if (/* this.getRabbitType() == 99 && */ this.currentMoveTypeDuration == 0)
 			{
 				EntityLivingBase entitylivingbase = this.getAttackTarget();
 
@@ -277,7 +374,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 				}
 			}
 
-			EntityAnimaniaRabbit.RabbitJumpHelper entityrabbit$rabbitjumphelper = (EntityAnimaniaRabbit.RabbitJumpHelper)this.jumpHelper;
+			EntityAnimaniaRabbit.RabbitJumpHelper entityrabbit$rabbitjumphelper = (EntityAnimaniaRabbit.RabbitJumpHelper) this.jumpHelper;
 
 			if (!entityrabbit$rabbitjumphelper.getIsJumping())
 			{
@@ -304,7 +401,6 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.wasOnGround = this.onGround;
 	}
 
-
 	@Override
 	protected void consumeItemFromStack(EntityPlayer player, ItemStack stack)
 	{
@@ -320,10 +416,12 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 	public int getAge()
 	{
-		try {
+		try
+		{
 			return (this.getIntFromDataManager(AGE));
 		}
-		catch (Exception e) {
+		catch (Exception e)
+		{
 			return 0;
 		}
 	}
@@ -333,12 +431,55 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.dataManager.set(EntityAnimaniaRabbit.AGE, Integer.valueOf(age));
 	}
 
+	public boolean getSleeping()
+	{
+		try
+		{
+			return (this.getBoolFromDataManager(SLEEPING));
+		}
+		catch (Exception e)
+		{
+			return false;
+		}
+	}
+
+	public void setSleeping(boolean flag)
+	{
+		if (flag)
+		{
+			this.dataManager.set(EntityAnimaniaRabbit.SLEEPING, Boolean.valueOf(true));
+		}
+		else
+		{
+			this.dataManager.set(EntityAnimaniaRabbit.SLEEPING, Boolean.valueOf(false));
+		}
+	}
+
+	public Float getSleepTimer()
+	{
+		try
+		{
+			return (this.getFloatFromDataManager(SLEEPTIMER));
+		}
+		catch (Exception e)
+		{
+			return 0F;
+		}
+	}
+
+	public void setSleepTimer(Float timer)
+	{
+		this.dataManager.set(EntityAnimaniaRabbit.SLEEPTIMER, Float.valueOf(timer));
+	}
+
 	public boolean getHandFed()
 	{
-		try {
+		try
+		{
 			return (this.getBoolFromDataManager(HANDFED));
 		}
-		catch (Exception e) {
+		catch (Exception e)
+		{
 			return false;
 		}
 	}
@@ -351,14 +492,18 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	@Nullable
 	public UUID getMateUniqueId()
 	{
-		if(mateable)
+		if (mateable)
 		{
+			if(this.mateUuidCached)
+				return this.mateUUID;
 			try
 			{
 				UUID id = (UUID) ((Optional) this.dataManager.get(EntityAnimaniaRabbit.MATE_UNIQUE_ID)).orNull();
+				this.mateUUID = id;
+				this.mateUuidCached = true;
 				return id;
 			}
-			catch(Exception e)
+			catch (Exception e)
 			{
 				return null;
 			}
@@ -368,15 +513,19 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 	public void setMateUniqueId(@Nullable UUID uniqueId)
 	{
+		this.mateUUID = uniqueId;
+		this.mateUuidCached = true;
 		this.dataManager.set(EntityAnimaniaRabbit.MATE_UNIQUE_ID, Optional.fromNullable(uniqueId));
 	}
 
 	public boolean getFed()
 	{
-		try {
+		try
+		{
 			return (this.getBoolFromDataManager(FED));
 		}
-		catch (Exception e) {
+		catch (Exception e)
+		{
 			return false;
 		}
 	}
@@ -388,16 +537,19 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 			this.dataManager.set(EntityAnimaniaRabbit.FED, Boolean.valueOf(true));
 			this.fedTimer = AnimaniaConfig.careAndFeeding.feedTimer + this.rand.nextInt(100);
 			this.setHealth(this.getHealth() + 1.0F);
-		} else
+		}
+		else
 			this.dataManager.set(EntityAnimaniaRabbit.FED, Boolean.valueOf(false));
 	}
 
 	public boolean getWatered()
 	{
-		try {
+		try
+		{
 			return (this.getBoolFromDataManager(WATERED));
 		}
-		catch (Exception e) {
+		catch (Exception e)
+		{
 			return false;
 		}
 	}
@@ -408,7 +560,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		{
 			this.dataManager.set(EntityAnimaniaRabbit.WATERED, Boolean.valueOf(true));
 			this.wateredTimer = AnimaniaConfig.careAndFeeding.waterTimer + this.rand.nextInt(100);
-		} else
+		}
+		else
 			this.dataManager.set(EntityAnimaniaRabbit.WATERED, Boolean.valueOf(false));
 	}
 
@@ -420,10 +573,12 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 	public int getColorNumber()
 	{
-		try {
+		try
+		{
 			return (this.getIntFromDataManager(COLOR_NUM));
 		}
-		catch (Exception e) {
+		catch (Exception e)
+		{
 			return 0;
 		}
 	}
@@ -443,26 +598,19 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		return resourceLocationBlink;
 	}
 
-
-	@Override
-	protected Item getDropItem()
-	{
-		return Items.RABBIT_FOOT;
-	}
-
 	private void calculateRotationYaw(double x, double z)
 	{
-		this.rotationYaw = (float)(MathHelper.atan2(z - this.posZ, x - this.posX) * (180D / Math.PI)) - 90.0F;
+		this.rotationYaw = (float) (MathHelper.atan2(z - this.posZ, x - this.posX) * (180D / Math.PI)) - 90.0F;
 	}
 
 	private void enableJumpControl()
 	{
-		((EntityAnimaniaRabbit.RabbitJumpHelper)this.jumpHelper).setCanJump(true);
+		((EntityAnimaniaRabbit.RabbitJumpHelper) this.jumpHelper).setCanJump(true);
 	}
 
 	private void disableJumpControl()
 	{
-		((EntityAnimaniaRabbit.RabbitJumpHelper)this.jumpHelper).setCanJump(false);
+		((EntityAnimaniaRabbit.RabbitJumpHelper) this.jumpHelper).setCanJump(false);
 	}
 
 	private void updateMoveTypeDuration()
@@ -483,12 +631,24 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.disableJumpControl();
 	}
 
-
 	@Override
 	public void onLivingUpdate()
 	{
-		if (this.getAge() == 0) {
+		if (this.getAge() == 0)
+		{
 			this.setAge(1);
+		}
+
+		if (this.getCustomNameTag().equals("Killer"))
+		{
+			for (Object a : this.tasks.taskEntries.toArray())
+			{
+				EntityAIBase ai = ((EntityAITaskEntry) a).action;
+				if (ai instanceof GenericAIPanic)
+				{
+					this.resetAI();
+				}
+			}
 		}
 
 		if (this.world.isRemote)
@@ -522,7 +682,6 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		boolean fed = this.getFed();
 		boolean watered = this.getWatered();
 
-
 		if (!fed && !watered)
 		{
 			this.addPotionEffect(new PotionEffect(MobEffects.WEAKNESS, 2, 1, false, false));
@@ -536,7 +695,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 				this.damageTimer++;
 			}
 
-		} else if (!fed || !watered)
+		}
+		else if (!fed || !watered)
 			this.addPotionEffect(new PotionEffect(MobEffects.WEAKNESS, 2, 0, false, false));
 
 		if (this.happyTimer > -1)
@@ -546,7 +706,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 			{
 				this.happyTimer = 60;
 
-				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles)
+				if (!this.getFed() && !this.getWatered() && !this.getSleeping() && !this.getHandFed() && AnimaniaConfig.gameRules.showUnhappyParticles)
 				{
 					double d = this.rand.nextGaussian() * 0.001D;
 					double d1 = this.rand.nextGaussian() * 0.001D;
@@ -576,8 +736,36 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		ItemStack stack = player.getHeldItem(hand);
 		EntityPlayer entityplayer = player;
 
-		if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack))
+		if (stack != ItemStack.EMPTY && stack.getItem() == Items.NAME_TAG)
 		{
+			if (!stack.hasDisplayName())
+			{
+				return false;
+			}
+			else
+			{
+				EntityLiving entityliving = (EntityLiving) this;
+				entityliving.setCustomNameTag(stack.getDisplayName());
+
+				entityliving.enablePersistence();
+				if (!player.capabilities.isCreativeMode)
+				{
+					stack.shrink(1);
+				}
+
+				if (stack.getDisplayName().equals("Killer"))
+				{
+					this.resetAI();
+					this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(50.0D);
+					this.setHealth(50);
+				}
+
+			}
+
+		}
+		else if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack) && !this.getSleeping())
+		{
+
 			if (!player.isCreative())
 			{
 				ItemStack emptied = AnimaniaHelper.emptyContainer(stack);
@@ -593,12 +781,21 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 			return true;
 
 		}
-		else if(stack != ItemStack.EMPTY && stack.getItem() == Items.BUCKET)
+		else if (stack != ItemStack.EMPTY && stack.getItem() == Items.BUCKET && !this.getSleeping())
 		{
 			return false;
 		}
+		else if (this.isBreedingItem(stack))
+		{
+			this.consumeItemFromStack(player, stack);
+			this.setInLove(player);
+			return true;
+		}
 		else
+		{
 			return super.processInteract(player, hand);
+		}
+		return super.processInteract(player, hand);
 	}
 
 	@Override
@@ -615,7 +812,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	public void writeEntityToNBT(NBTTagCompound compound)
 	{
 		super.writeEntityToNBT(compound);
-		if (this.getMateUniqueId() != null) {
+		if (this.getMateUniqueId() != null)
+		{
 			compound.setString("MateUUID", this.getMateUniqueId().toString());
 		}
 		compound.setBoolean("Fed", this.getFed());
@@ -623,6 +821,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		compound.setBoolean("Watered", this.getWatered());
 		compound.setInteger("ColorNumber", getColorNumber());
 		compound.setInteger("Age", this.getAge());
+		compound.setBoolean("Sleep", this.getSleeping());
+		compound.setFloat("SleepTimer", this.getSleepTimer());
 
 	}
 
@@ -652,58 +852,12 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		this.setHandFed(compound.getBoolean("Handfed"));
 		this.setWatered(compound.getBoolean("Watered"));
 		this.setAge(compound.getInteger("Age"));
+		this.setSleeping(compound.getBoolean("Sleep"));
+		this.setSleepTimer(compound.getFloat("SleepTimer"));
 
 	}
 
-	@Override
-	protected void dropFewItems(boolean hit, int lootlevel)
-	{
-		int happyDrops = 0;
-
-		if (this.getWatered())
-			happyDrops++;
-		if (this.getFed())
-			happyDrops++;
-
-		ItemStack dropItem;
-		if (AnimaniaConfig.drops.customMobDrops && dropRaw != Items.RABBIT && dropCooked != Items.COOKED_RABBIT && dropRaw != Item.getItemFromBlock(Blocks.AIR)) {
-			String drop = AnimaniaConfig.drops.rabbitDrop;
-			dropItem = AnimaniaHelper.getItem(drop);
-
-			if (this.isBurning() && drop.equals(this.dropRaw.getRegistryName().toString()))
-			{
-				drop = this.dropCooked.getRegistryName().toString();
-				dropItem = AnimaniaHelper.getItem(drop);
-			}
-		} else {
-			dropItem = new ItemStack(this.dropRaw, 1);
-			if (this.isBurning())
-				dropItem = new ItemStack(this.dropCooked, 1);
-		}
-
-		ItemStack dropItem2;
-		String drop2 = AnimaniaConfig.drops.rabbitDrop2;
-		dropItem2 = AnimaniaHelper.getItem(drop2);
-
-		if (happyDrops >= 1)
-		{
-			if (dropItem != null) {
-				dropItem.setCount(1 + lootlevel);
-				EntityItem entityitem = new EntityItem(this.world, this.posX + 0.5D, this.posY + 0.5D, this.posZ + 0.5D, dropItem);
-				world.spawnEntity(entityitem);
-			}
-			if (dropItem2 != null) {
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.rabbitDrop2Amount + lootlevel);
-			}
-		} else if (happyDrops == 0) {
-			if (dropItem != null) {
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.rabbitDrop2Amount + lootlevel);
-			}
-		}
-	}
-
-
-	static class AIAvoidEntity<T extends Entity> extends EntityAIAvoidEntity<T>
+	static class AIAvoidEntity<T extends Entity> extends GenericAIAvoidEntity<T>
 	{
 		private final EntityAnimaniaRabbit entityInstance;
 
@@ -718,7 +872,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		 */
 		public boolean shouldExecute()
 		{
-			return true; //this.entityInstance.getRabbitType() != 99 && super.shouldExecute();
+			return true; // this.entityInstance.getRabbitType() != 99 &&
+			// super.shouldExecute();
 		}
 	}
 
@@ -731,11 +886,11 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 		protected double getAttackReachSqr(EntityLivingBase attackTarget)
 		{
-			return (double)(4.0F + attackTarget.width);
+			return (double) (4.0F + attackTarget.width);
 		}
 	}
 
-	static class AIPanic extends EntityAIPanic
+	static class AIPanic extends GenericAIPanic
 	{
 		private final EntityAnimaniaRabbit theEntity;
 
@@ -780,7 +935,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 				}
 
 				this.canRaid = false;
-				//this.wantsToRaid = this.rabbit.isCarrotEaten();
+				// this.wantsToRaid = this.rabbit.isCarrotEaten();
 				this.wantsToRaid = true;
 			}
 
@@ -801,7 +956,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 		public void updateTask()
 		{
 			super.updateTask();
-			this.rabbit.getLookHelper().setLookPosition((double)this.destinationBlock.getX() + 0.5D, (double)(this.destinationBlock.getY() + 1), (double)this.destinationBlock.getZ() + 0.5D, 10.0F, (float)this.rabbit.getVerticalFaceSpeed());
+			this.rabbit.getLookHelper().setLookPosition((double) this.destinationBlock.getX() + 0.5D, (double) (this.destinationBlock.getY() + 1), (double) this.destinationBlock.getZ() + 0.5D, 10.0F, (float) this.rabbit.getVerticalFaceSpeed());
 
 			if (this.getIsAboveDestination())
 			{
@@ -812,7 +967,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 				if (this.canRaid && block instanceof BlockCarrot)
 				{
-					Integer integer = (Integer)iblockstate.getValue(BlockCarrot.AGE);
+					Integer integer = (Integer) iblockstate.getValue(BlockCarrot.AGE);
 
 					if (integer.intValue() == 0)
 					{
@@ -825,7 +980,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 						world.playEvent(2001, blockpos, Block.getStateId(iblockstate));
 					}
 
-					//this.rabbit.createEatingParticles();
+					// this.rabbit.createEatingParticles();
 				}
 
 				this.canRaid = false;
@@ -846,7 +1001,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 				IBlockState iblockstate = worldIn.getBlockState(pos);
 				block = iblockstate.getBlock();
 
-				if (block instanceof BlockCarrot && ((BlockCarrot)block).isMaxAge(iblockstate))
+				if (block instanceof BlockCarrot && ((BlockCarrot) block).isMaxAge(iblockstate))
 				{
 					this.canRaid = true;
 					return true;
@@ -909,7 +1064,7 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 
 		public void onUpdateMoveHelper()
 		{
-			if (this.theEntity.onGround && !this.theEntity.isJumping && !((EntityAnimaniaRabbit.RabbitJumpHelper)this.theEntity.jumpHelper).getIsJumping())
+			if (this.theEntity.onGround && !this.theEntity.isJumping && !((EntityAnimaniaRabbit.RabbitJumpHelper) this.theEntity.jumpHelper).getIsJumping())
 			{
 				this.theEntity.setMovementSpeed(0.0D);
 			}
@@ -947,7 +1102,8 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	}
 
 	@Override
-	public EntityAnimaniaRabbit createChild(EntityAgeable ageable) {
+	public EntityAnimaniaRabbit createChild(EntityAgeable ageable)
+	{
 		return null;
 	}
 
@@ -966,14 +1122,12 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	@Override
 	public int getPrimaryEggColor()
 	{
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
 	@Override
 	public int getSecondaryEggColor()
 	{
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
@@ -984,79 +1138,135 @@ public class EntityAnimaniaRabbit extends EntityRabbit implements ISpawnable, An
 	}
 
 	// ==================================================
-		//     Data Manager Trapper (borrowed from Lycanites)
-		// ==================================================
+	// Data Manager Trapper (borrowed from Lycanites)
+	// ==================================================
 
-		public boolean getBoolFromDataManager(DataParameter<Boolean> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return false;
-			}
+	public boolean getBoolFromDataManager(DataParameter<Boolean> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return false;
+		}
+	}
 
-		public byte getByteFromDataManager(DataParameter<Byte> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return 0;
-			}
+	public byte getByteFromDataManager(DataParameter<Byte> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return 0;
+		}
+	}
 
-		public int getIntFromDataManager(DataParameter<Integer> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return 0;
-			}
+	public int getIntFromDataManager(DataParameter<Integer> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return 0;
+		}
+	}
 
-		public float getFloatFromDataManager(DataParameter<Float> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return 0;
-			}
+	public float getFloatFromDataManager(DataParameter<Float> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return 0;
+		}
+	}
 
-		public String getStringFromDataManager(DataParameter<String> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return null;
-			}
+	public String getStringFromDataManager(DataParameter<String> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
 
-		public Optional<UUID> getUUIDFromDataManager(DataParameter<Optional<UUID>> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return null;
-			}
+	public Optional<UUID> getUUIDFromDataManager(DataParameter<Optional<UUID>> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
 
-		public ItemStack getItemStackFromDataManager(DataParameter<ItemStack> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return ItemStack.EMPTY;
-			}
+	public ItemStack getItemStackFromDataManager(DataParameter<ItemStack> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
+		catch (Exception e)
+		{
+			return ItemStack.EMPTY;
+		}
+	}
 
-		public Optional<BlockPos> getBlockPosFromDataManager(DataParameter<Optional<BlockPos>> key) {
-			try {
-				return this.getDataManager().get(key);
-			}
-			catch (Exception e) {
-				return Optional.absent();
-			}
+	public Optional<BlockPos> getBlockPosFromDataManager(DataParameter<Optional<BlockPos>> key)
+	{
+		try
+		{
+			return this.getDataManager().get(key);
 		}
-	
+		catch (Exception e)
+		{
+			return Optional.absent();
+		}
+	}
+
+	@Override
+	public Set<Item> getFoodItems()
+	{
+		return TEMPTATION_ITEMS;
+	}
+
+	@Override
+	public void setSleepingPos(BlockPos pos)
+	{
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public BlockPos getSleepingPos()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getBlinkTimer()
+	{
+		return blinkTimer;
+	}
+
+	@Override
+	public Class[] getFoodBlocks()
+	{
+		return new Class[] { BlockCarrot.class, BlockTallGrass.class, BlockFlower.class };
+	}
+
 }

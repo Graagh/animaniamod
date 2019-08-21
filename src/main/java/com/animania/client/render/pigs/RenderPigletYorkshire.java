@@ -1,11 +1,12 @@
 package com.animania.client.render.pigs;
 
-import java.util.Random;
-
 import org.lwjgl.opengl.GL11;
 
+import com.animania.Animania;
 import com.animania.client.models.ModelPiglet;
+import com.animania.client.render.layer.LayerBlinking;
 import com.animania.client.render.pigs.layers.LayerMudPigletYorkshire;
+import com.animania.common.entities.pigs.EntityAnimaniaPig;
 import com.animania.common.entities.pigs.EntityPigletYorkshire;
 import com.animania.common.handler.BlockHandler;
 
@@ -23,92 +24,120 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class RenderPigletYorkshire<T extends EntityPigletYorkshire> extends RenderLiving<T>
 {
-    public static final Factory           FACTORY            = new Factory();
+	public static final Factory FACTORY = new Factory();
 
-    private static final ResourceLocation PIG_TEXTURES       = new ResourceLocation("animania:textures/entity/pigs/piglet_yorkshire.png");
-    private static final ResourceLocation PIG_TEXTURES_BLINK = new ResourceLocation("animania:textures/entity/pigs/piglet_yorkshire_blink.png");
-    private boolean                       flipped            = false;
+	private static final ResourceLocation PIG_TEXTURES = new ResourceLocation("animania:textures/entity/pigs/piglet_yorkshire.png");
+	private static final ResourceLocation PIG_TEXTURES_BLINK = new ResourceLocation("animania:textures/entity/pigs/piglet_blink.png");
+	private boolean flipped = false;
 
-    public RenderPigletYorkshire(RenderManager rm) {
-        super(rm, new ModelPiglet(), 0.3F);
-        this.addLayer(new LayerMudPigletYorkshire(this));
-    }
+	public RenderPigletYorkshire(RenderManager rm)
+	{
+		super(rm, new ModelPiglet(), 0.3F);
+		this.addLayer(new LayerMudPigletYorkshire(this));
+		this.addLayer(new LayerBlinking(this, PIG_TEXTURES_BLINK, 0xE07F7D));
+	}
 
-    protected void preRenderScale(T entity, float f) {
+	protected void preRenderScale(T entity, float f)
+	{
 
-        float age = entity.getEntityAge();
-        GL11.glScalef(1.0F + age, 1.0F + age, 1.0F + age);
+		float age = entity.getEntityAge();
+		GL11.glScalef(1.0F + age, 1.0F + age, 1.0F + age);
 
-        double x = entity.posX;
-        double y = entity.posY;
-        double z = entity.posZ;
+		EntityAnimaniaPig entityChk = (EntityAnimaniaPig) entity;
 
-        BlockPos pos = new BlockPos(x, y, z);
-        Random rand = new Random();
-       
-        Block blockchk = entity.world.getBlockState(pos).getBlock();
-        Block blockchk2 = entity.world.getBlockState(pos).getBlock();
-        boolean mudBlock = false;
-       if (blockchk == BlockHandler.blockMud || blockchk.getUnlocalizedName().contains("tile.mud") || blockchk2.getUnlocalizedName().contains("tile.mud")) {
-        	mudBlock = true;
-        }
+		if (entityChk.getSleeping())
+		{
+			this.shadowSize = 0;
+			float sleepTimer = entityChk.getSleepTimer();
+			if (entityChk.getRNG().nextInt(2) < 1 && sleepTimer > -0.55F)
+			{
+				sleepTimer = sleepTimer - 0.01F;
+			}
+			entity.setSleepTimer(sleepTimer);
 
-        if (mudBlock && !entity.getMuddy()) {
-            GlStateManager.translate(0.0F, entity.height - 0.8F + age * .1F, 0.0F);
-            GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
-            entity.setMuddy(true);
-            entity.setMudTimer(1.0F);
-            entity.setSplashTimer(1.0F);
-        }
-        else if (entity.isWet() && entity.getMuddy() && !mudBlock) {
-            entity.setMuddy(false);
-            entity.setMudTimer(0.0F);
-            entity.setSplashTimer(0.0F);
-        }
-        else if (mudBlock) {
-            Float splashTimer = entity.getSplashTimer();
-            if (!entity.hasPath()) {
-                GlStateManager.translate(0.0F, entity.height - 0.8F + age * .1F, 0.0F);
-                GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
-            }
-            splashTimer = splashTimer - 0.045F;
-            entity.setSplashTimer(splashTimer);
-            if (splashTimer <= 0.0F) {
-                entity.setMuddy(true);
-                entity.setMudTimer(1.0F);
-            }
-        }
-        else if (entity.getMudTimer() > 0) {
-            entity.setMuddy(false);
-            float mudTimer = entity.getMudTimer();
-            if (rand.nextInt(3) < 1) {
-                mudTimer = mudTimer - 0.0025F;
-                entity.setMudTimer(mudTimer);
-            }
-        }
+			GlStateManager.translate(0.0F, entity.height - 0.70F + age * .1F, 0.0F);
+			GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
+		}
+		else
+		{
+			entityChk.setSleeping(false);
+			entityChk.setSleepTimer(0F);
 
-    }
+			double x = entity.posX;
+			double y = entity.posY;
+			double z = entity.posZ;
 
-    @Override
-    protected void preRenderCallback(T entityliving, float f) {
-        this.preRenderScale(entityliving, f);
-    }
+			BlockPos pos = new BlockPos(x, y, z);
 
-    @Override
-    protected ResourceLocation getEntityTexture(T entity) {
-        int blinkTimer = entity.blinkTimer;
+			Block blockchk = entity.world.getBlockState(pos).getBlock();
+			Block blockchk2 = entity.world.getBlockState(pos).getBlock();
+			boolean mudBlock = false;
+			if (blockchk == BlockHandler.blockMud || blockchk.getUnlocalizedName().contains("tile.mud") || blockchk2.getUnlocalizedName().contains("tile.mud"))
+			{
+				mudBlock = true;
+			}
 
-        if (blinkTimer < 7 && blinkTimer >= 0)
-            return RenderPigletYorkshire.PIG_TEXTURES_BLINK;
-        else
-            return RenderPigletYorkshire.PIG_TEXTURES;
-    }
+			if (mudBlock && !entity.getMuddy())
+			{
+				GlStateManager.translate(0.0F, entity.height - 0.8F + age * .1F, 0.0F);
+				GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
+				entity.setMuddy(true);
+				entity.setMudTimer(1.0F);
+				entity.setSplashTimer(1.0F);
+			}
+			else if (entity.isWet() && entity.getMuddy() && !mudBlock)
+			{
+				entity.setMuddy(false);
+				entity.setMudTimer(0.0F);
+				entity.setSplashTimer(0.0F);
+			}
+			else if (mudBlock)
+			{
+				Float splashTimer = entity.getSplashTimer();
+				if (!entity.hasPath())
+				{
+					GlStateManager.translate(0.0F, entity.height - 0.8F + age * .1F, 0.0F);
+					GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
+				}
+				splashTimer = splashTimer - 0.045F;
+				entity.setSplashTimer(splashTimer);
+				if (splashTimer <= 0.0F)
+				{
+					entity.setMuddy(true);
+					entity.setMudTimer(1.0F);
+				}
+			}
+			else if (entity.getMudTimer() > 0)
+			{
+				entity.setMuddy(false);
+				float mudTimer = entity.getMudTimer();
+				if (Animania.RANDOM.nextInt(3) < 1)
+				{
+					mudTimer = mudTimer - 0.0025F;
+					entity.setMudTimer(mudTimer);
+				}
+			}
+		}
+	}
 
-    static class Factory<T extends EntityPigletYorkshire> implements IRenderFactory<T>
-    {
-        @Override
-        public Render<? super T> createRenderFor(RenderManager manager) {
-            return new RenderPigletYorkshire(manager);
-        }
-    }
+	@Override
+	protected void preRenderCallback(T entityliving, float f)
+	{
+		this.preRenderScale(entityliving, f);
+	}
+
+	@Override
+	protected ResourceLocation getEntityTexture(T entity)
+	{
+		return this.PIG_TEXTURES;
+	}
+
+	static class Factory<T extends EntityPigletYorkshire> implements IRenderFactory<T>
+	{
+		@Override
+		public Render<? super T> createRenderFor(RenderManager manager)
+		{
+			return new RenderPigletYorkshire(manager);
+		}
+	}
 }

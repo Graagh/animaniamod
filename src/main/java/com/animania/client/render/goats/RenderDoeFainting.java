@@ -1,10 +1,10 @@
 package com.animania.client.render.goats;
 
-import java.util.Random;
-
 import org.lwjgl.opengl.GL11;
 
 import com.animania.client.models.goats.ModelDoeFainting;
+import com.animania.client.render.layer.LayerBlinking;
+import com.animania.common.entities.goats.EntityAnimaniaGoat;
 import com.animania.common.entities.goats.EntityDoeFainting;
 
 import net.minecraft.client.renderer.GlStateManager;
@@ -19,61 +19,84 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 @SideOnly(Side.CLIENT)
 public class RenderDoeFainting<T extends EntityDoeFainting> extends RenderLiving<T>
 {
-    public static final Factory           FACTORY          = new Factory();
-    private static final ResourceLocation goatTextures      = new ResourceLocation("animania:textures/entity/goats/doe_fainting.png");
-    private static final ResourceLocation goatTexturesBlink = new ResourceLocation("animania:textures/entity/goats/doe_fainting_blink.png");
-    Random                                rand             = new Random();
+	public static final Factory FACTORY = new Factory();
+	private static final ResourceLocation goatTextures = new ResourceLocation("animania:textures/entity/goats/doe_fainting.png");
+	private static final ResourceLocation goatTexturesBlink = new ResourceLocation("animania:textures/entity/goats/goats_blink.png");
 
-    public RenderDoeFainting(RenderManager rm) {
-        super(rm, new ModelDoeFainting(), 0.3F);
-    }
+	public RenderDoeFainting(RenderManager rm)
+	{
+		super(rm, new ModelDoeFainting(), 0.3F);
+		this.addLayer(new LayerBlinking(this, goatTexturesBlink, 0x6B6968));
+	}
 
-    protected ResourceLocation getGoatTextures(T par1Entity) {
-        return RenderDoeFainting.goatTextures;
-    }
+	protected ResourceLocation getGoatTextures(T par1Entity)
+	{
+		return RenderDoeFainting.goatTextures;
+	}
 
-    protected ResourceLocation getGoatTexturesBlink(T par1Entity) {
-        return RenderDoeFainting.goatTexturesBlink;
-    }
+	protected ResourceLocation getGoatTexturesBlink(T par1Entity)
+	{
+		return RenderDoeFainting.goatTexturesBlink;
+	}
 
-    protected void preRenderScale(EntityDoeFainting entity, float f) {
-        GL11.glScalef(0.4F, 0.4F, 0.4F);
-        if (entity.getSpooked() && entity.getSpookedTimer() < 0.94F && entity.getSpookedTimer() > 0.06F)  {
+	protected void preRenderScale(EntityDoeFainting entity, float f)
+	{
+		GL11.glScalef(0.4F, 0.4F, 0.4F);
+
+		EntityAnimaniaGoat entityGoat = (EntityAnimaniaGoat) entity;
+		if (!entity.getSleeping() && entity.getSpooked() && entity.getSpookedTimer() < 0.94F && entity.getSpookedTimer() > 0.06F)
+		{
 			GlStateManager.translate(0.0F, entity.height - 1.5F, 0.0F);
 			GlStateManager.rotate(86.0F, 0.0F, 0.0F, 1.0F);
-			this.renderManager.setRenderShadow(false);
-		} else {
-			GL11.glTranslatef(0f, 0f, -0.5f);
-			this.renderManager.setRenderShadow(true);
+			this.shadowSize = 0;
 		}
-    }
+		else
+		{
+			GL11.glTranslatef(0f, 0f, -0.5f);
+			this.shadowSize = 0.3F;
+		}
+		GL11.glTranslatef(0f, 0f, -0.5f);
 
-    @Override
-    protected void preRenderCallback(T entityliving, float f) {
-        this.preRenderScale(entityliving, f);
-    }
-    
+		if (entityGoat.getSleeping())
+		{
+			this.shadowSize = 0;
+			float sleepTimer = entityGoat.getSleepTimer();
+			if (sleepTimer > -0.55F)
+			{
+				sleepTimer = sleepTimer - 0.01F;
+			}
+			entity.setSleepTimer(sleepTimer);
 
-    /**
-     * Returns the location of an entity's texture. Doesn't seem to be called
-     * unless you call Render.bindEntityTexture.
-     */
-    @Override
-    protected ResourceLocation getEntityTexture(T entity) {
-        int blinkTimer = entity.blinkTimer;
+			GlStateManager.translate(-0.25F, entity.height - 1.10F - sleepTimer, -0.25F);
+			GlStateManager.rotate(6.0F, 0.0F, 0.0F, 1.0F);
+		}
+		else
+		{
+			this.shadowSize = 0.3F;
+			entityGoat.setSleeping(false);
+			entityGoat.setSleepTimer(0F);
+		}
+	}
 
-        if (blinkTimer < 7 && blinkTimer >= 0)
-            return this.getGoatTexturesBlink(entity);
-        else
-            return this.getGoatTextures(entity);
-    }
+	@Override
+	protected ResourceLocation getEntityTexture(T entity)
+	{
+		return this.getGoatTextures(entity);
+	}
 
-    static class Factory<T extends EntityDoeFainting> implements IRenderFactory<T>
-    {
-        @Override
-        public Render<? super T> createRenderFor(RenderManager manager) {
-            return new RenderDoeFainting(manager);
-        }
+	@Override
+	protected void preRenderCallback(T entityliving, float f)
+	{
+		this.preRenderScale(entityliving, f);
+	}
 
-    }
+	static class Factory<T extends EntityDoeFainting> implements IRenderFactory<T>
+	{
+		@Override
+		public Render<? super T> createRenderFor(RenderManager manager)
+		{
+			return new RenderDoeFainting(manager);
+		}
+
+	}
 }

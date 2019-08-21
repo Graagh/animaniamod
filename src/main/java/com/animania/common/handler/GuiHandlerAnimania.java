@@ -2,6 +2,7 @@ package com.animania.common.handler;
 
 import com.animania.client.gui.GuiCartChest;
 import com.animania.common.entities.props.EntityCart;
+import com.animania.common.entities.props.EntityTiller;
 import com.animania.common.entities.props.EntityWagon;
 import com.animania.common.inventory.ContainerHorseCart;
 
@@ -49,6 +50,21 @@ public class GuiHandlerAnimania implements IGuiHandler
 					EntityWagon wagon = (EntityWagon) entity;
 					IInventory wagonInv = wagon.wagonChest;
 					return new ContainerHorseCart(player.inventory, wagonInv, player);
+				}
+			}
+			break;
+			
+		case 2:
+			esize = world.loadedEntityList.size(); 
+			entityID = 0;
+			for (int k = 0; k <= esize - 1; k++) {
+
+				entity = (Entity)world.loadedEntityList.get(k);
+				entityID = entity.getEntityId();
+				if (entityID == x) {
+					EntityTiller tiller = (EntityTiller) entity;
+					IInventory cartInv = tiller.cartChest;
+					return new ContainerHorseCart(player.inventory, cartInv, player);
 				}
 			}
 			break;
@@ -101,7 +117,22 @@ public class GuiHandlerAnimania implements IGuiHandler
 
 			}
 			break;
+			
+		case 2:
+			esize = world.loadedEntityList.size(); 
+			entityID = 0;
+			for (int k = 0; k <= esize - 1; k++) {
 
+				entity = (Entity)world.loadedEntityList.get(k);
+				entityID = entity.getEntityId();
+				if (entityID == x) {
+					EntityTiller tiller = (EntityTiller) entity;
+					IInventory cartInv = tiller.cartChest;
+					return new GuiCartChest(player.inventory, cartInv);
+				}
+
+			}
+			break;
 		}
 
 		return null;

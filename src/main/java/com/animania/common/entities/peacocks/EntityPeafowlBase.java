@@ -1,6 +1,6 @@
 package com.animania.common.entities.peacocks;
 
-import com.animania.common.entities.EntityGender;
+import com.animania.api.data.EntityGender;
 import com.animania.common.entities.peacocks.ai.EntityAIFindPeacockNest;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.compat.top.providers.entity.TOPInfoProviderBase;
@@ -31,7 +31,9 @@ public class EntityPeafowlBase extends EntityAnimaniaPeacock implements TOPInfoP
 	public EntityPeafowlBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.6F, 1.2F);
+		this.setSize(0.6F, 1.2F); 
+		this.width = 0.6F;
+		this.height = 1.2F;
 		this.tasks.addTask(1, new EntityAIFindPeacockNest(this, 1.0D));
 		this.laidTimer = AnimaniaConfig.careAndFeeding.laidTimer / 2 + 0 + this.rand.nextInt(100);
 		this.gender = EntityGender.FEMALE;
@@ -119,36 +121,9 @@ public class EntityPeafowlBase extends EntityAnimaniaPeacock implements TOPInfoP
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume() - .8F, this.getSoundPitch() + .2F);
 	}
-	
-	@Override
-	protected void dropFewItems(boolean hit, int lootlevel)
-	{
-		int happyDrops = 0;
-
-		if (this.getWatered())
-			happyDrops++;
-		if (this.getFed())
-			happyDrops++;
-
-				
-		ItemStack dropItem2;
-		String drop2 = AnimaniaConfig.drops.peacockDrop2;
-		dropItem2 = AnimaniaHelper.getItem(drop2);
-		
-		if (happyDrops == 2 && dropItem2 !=null)
-		{
-			this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.peacockDrop2Amount + lootlevel);
-		}
-		else if (happyDrops == 1 && dropItem2 !=null)
-		{
-			this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.peacockDrop2Amount + lootlevel);
-		}
-
-	}
-
 	
 	@Override
 	public void addProbeInfo(ProbeMode mode, IProbeInfo probeInfo, EntityPlayer player, World world, Entity entity, IProbeHitEntityData data)

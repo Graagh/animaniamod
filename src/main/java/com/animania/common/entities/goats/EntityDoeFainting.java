@@ -12,10 +12,11 @@ public class EntityDoeFainting extends EntityDoeBase
 	public EntityDoeFainting(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.1F, 1.0F);
+		this.setSize(1.1F, 1.0F); 
+		this.width = 1.1F;
+		this.height = 1.0F;
 		this.goatType = GoatType.FAINTING;
-		this.dropRaw = ItemHandler.rawChevon;
-		this.dropCooked = ItemHandler.cookedChevon;
+
 	}
 	
 	@Override

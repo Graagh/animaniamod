@@ -1,22 +1,25 @@
 package com.animania.common.entities.chickens;
 
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IAnimaniaAnimalBase;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.AnimaniaAnimal;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.ISpawnable;
-import com.animania.common.entities.chickens.ai.EntityAIFindFood;
-import com.animania.common.entities.chickens.ai.EntityAIFindWater;
-import com.animania.common.entities.chickens.ai.EntityAIPanicChickens;
-import com.animania.common.entities.chickens.ai.EntityAISwimmingChicks;
+import com.animania.common.blocks.BlockSeeds;
 import com.animania.common.entities.chickens.ai.EntityAIWatchClosestFromSide;
-import com.animania.common.entities.genericAi.EntityAnimaniaAvoidWater;
+import com.animania.common.entities.generic.ai.GenericAIFindFood;
+import com.animania.common.entities.generic.ai.GenericAIFindWater;
+import com.animania.common.entities.generic.ai.GenericAILookIdle;
+import com.animania.common.entities.generic.ai.GenericAIPanic;
+import com.animania.common.entities.generic.ai.GenericAISleep;
+import com.animania.common.entities.generic.ai.GenericAISwimmingSmallCreatures;
+import com.animania.common.entities.generic.ai.GenericAITempt;
+import com.animania.common.entities.generic.ai.GenericAIWanderAvoidWater;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.common.items.ItemEntityEgg;
 import com.animania.config.AnimaniaConfig;
@@ -28,10 +31,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAILookIdle;
-import net.minecraft.entity.ai.EntityAITempt;
-import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
-import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.ai.EntityAIHurtByTarget;
 import net.minecraft.entity.passive.EntityChicken;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -54,13 +54,15 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.World;
 
-public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, AnimaniaAnimal
+public class EntityAnimaniaChicken extends EntityChicken implements IAnimaniaAnimalBase
 {
 	public static final Set<Item> TEMPTATION_ITEMS = Sets.newHashSet(AnimaniaHelper.getItemArray(AnimaniaConfig.careAndFeeding.chickenFood));
 	protected static final DataParameter<Boolean> FED = EntityDataManager.<Boolean>createKey(EntityAnimaniaChicken.class, DataSerializers.BOOLEAN);
 	protected static final DataParameter<Boolean> WATERED = EntityDataManager.<Boolean>createKey(EntityAnimaniaChicken.class, DataSerializers.BOOLEAN);
 	protected static final DataParameter<Optional<UUID>> MATE_UNIQUE_ID = EntityDataManager.<Optional<UUID>>createKey(EntityAnimaniaChicken.class, DataSerializers.OPTIONAL_UNIQUE_ID);
 	protected static final DataParameter<Integer> AGE = EntityDataManager.<Integer>createKey(EntityAnimaniaChicken.class, DataSerializers.VARINT);
+	protected static final DataParameter<Boolean> SLEEPING = EntityDataManager.<Boolean>createKey(EntityAnimaniaChicken.class, DataSerializers.BOOLEAN);
+	protected static final DataParameter<Boolean> HANDFED = EntityDataManager.<Boolean>createKey(EntityAnimaniaChicken.class, DataSerializers.BOOLEAN);
 	public boolean chickenJockey;
 	protected ResourceLocation resourceLocation;
 	protected ResourceLocation resourceLocationBlink;
@@ -75,28 +77,27 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 	private int featherTimer;
 	protected int damageTimer;
 	public ChickenType type;
-	protected Item dropRaw = Items.CHICKEN;
-	protected Item dropCooked = Items.COOKED_CHICKEN;
-	protected Item oldDropRaw = Items.CHICKEN;
-	protected Item oldDropCooked = Items.COOKED_CHICKEN;
 	public EntityGender gender;
-
+	public int lidCol;
+	
 	public EntityAnimaniaChicken(World worldIn)
 	{
 		super(worldIn);
 		this.tasks.taskEntries.clear();
-		this.tasks.addTask(0, new EntityAISwimmingChicks(this));
-		this.tasks.addTask(1, new EntityAIPanicChickens(this, 1.4D));
-		this.tasks.addTask(4, new EntityAITempt(this, 1.2D, false, EntityAnimaniaChicken.TEMPTATION_ITEMS));
-
+		this.tasks.addTask(0, new GenericAISwimmingSmallCreatures(this));
+		this.tasks.addTask(1, new GenericAIPanic<EntityAnimaniaChicken>(this, 1.4D));
 		if (!AnimaniaConfig.gameRules.ambianceMode) {
-			this.tasks.addTask(2, new EntityAIFindWater(this, 1.0D));
-			this.tasks.addTask(3, new EntityAIFindFood(this, 1.0D));
+			this.tasks.addTask(2, new GenericAIFindWater<EntityAnimaniaChicken>(this, 1.0D, null, EntityAnimaniaChicken.class, true));
+			this.tasks.addTask(3, new GenericAIFindFood<EntityAnimaniaChicken>(this, 1.0D, null, true));
 		}
-		this.tasks.addTask(6, new EntityAIWanderAvoidWater(this, 1.0D));
+		this.tasks.addTask(4, new GenericAITempt<EntityAnimaniaChicken>(this, 1.2D, false, EntityAnimaniaChicken.TEMPTATION_ITEMS));
+		this.tasks.addTask(6, new GenericAIWanderAvoidWater(this, 1.0D));
 		this.tasks.addTask(7, new EntityAIWatchClosestFromSide(this, EntityPlayer.class, 6.0F));
-		this.tasks.addTask(8, new EntityAnimaniaAvoidWater(this));
-		this.tasks.addTask(11, new EntityAILookIdle(this));
+		this.tasks.addTask(11, new GenericAILookIdle<EntityAnimaniaChicken>(this));
+		if (AnimaniaConfig.gameRules.animalsSleep) {
+			this.tasks.addTask(8, new GenericAISleep<EntityAnimaniaChicken>(this, 0.8, AnimaniaHelper.getBlock(AnimaniaConfig.careAndFeeding.chickenBed), AnimaniaHelper.getBlock(AnimaniaConfig.careAndFeeding.chickenBed2), EntityAnimaniaChicken.class));
+		}
+		this.targetTasks.addTask(0, new EntityAIHurtByTarget(this, false, new Class[0]));
 		this.fedTimer = AnimaniaConfig.careAndFeeding.feedTimer + this.rand.nextInt(100);
 		this.wateredTimer = AnimaniaConfig.careAndFeeding.waterTimer + this.rand.nextInt(100);
 		this.happyTimer = 60;
@@ -109,6 +110,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 	protected void consumeItemFromStack(EntityPlayer player, ItemStack stack)
 	{
 		this.setFed(true);
+		this.setHandFed(true);
 		if (!player.capabilities.isCreativeMode)
 			stack.setCount(stack.getCount() - 1);
 	}
@@ -119,7 +121,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		super.setPosition(x, y, z);
 	}
 
-	
+
 	@Override
 	public void setInLove(EntityPlayer player)
 	{
@@ -137,7 +139,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		ItemStack stack = player.getHeldItem(hand);
 		EntityPlayer entityplayer = player;
 
-		if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack))
+		if (stack != ItemStack.EMPTY && AnimaniaHelper.isWaterContainer(stack) && !this.getSleeping())
 		{
 			if(!player.isCreative())
 			{
@@ -147,6 +149,12 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 			}
 
 			this.setWatered(true);
+			this.setInLove(player);
+			return true;
+		}
+		else if (this.isBreedingItem(stack))
+		{
+			this.consumeItemFromStack(player, stack);
 			this.setInLove(player);
 			return true;
 		}
@@ -165,6 +173,12 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 	}
 
 	@Override
+	protected ResourceLocation getLootTable()
+	{
+		return this instanceof EntityChickBase ? null : this.type.isPrime ? new ResourceLocation(Animania.MODID, "chicken_prime") : new ResourceLocation(Animania.MODID, "chicken_regular");
+	}
+	
+	@Override
 	protected void applyEntityAttributes()
 	{
 		super.applyEntityAttributes();
@@ -179,6 +193,8 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		this.dataManager.register(EntityAnimaniaChicken.FED, Boolean.valueOf(true));
 		this.dataManager.register(EntityAnimaniaChicken.WATERED, Boolean.valueOf(true));
 		this.dataManager.register(EntityAnimaniaChicken.AGE, Integer.valueOf(0));
+		this.dataManager.register(EntityAnimaniaChicken.SLEEPING, Boolean.valueOf(false));
+		this.dataManager.register(EntityAnimaniaChicken.HANDFED, Boolean.valueOf(false));
 	}
 
 	@Override
@@ -187,8 +203,10 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		super.writeEntityToNBT(nbttagcompound);
 		nbttagcompound.setBoolean("IsChickenJockey", this.chickenJockey);
 		nbttagcompound.setBoolean("Fed", this.getFed());
+		nbttagcompound.setBoolean("Handfed", this.getHandFed());
 		nbttagcompound.setBoolean("Watered", this.getWatered());
 		nbttagcompound.setInteger("Age", this.getAge());
+		nbttagcompound.setBoolean("Sleep", this.getSleeping());
 	}
 
 	@Override
@@ -199,8 +217,10 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		this.chickenJockey = nbttagcompound.getBoolean("IsChickenJockey");
 
 		this.setFed(nbttagcompound.getBoolean("Fed"));
+		this.setHandFed(nbttagcompound.getBoolean("Handfed"));
 		this.setWatered(nbttagcompound.getBoolean("Watered"));
 		this.setAge(nbttagcompound.getInteger("Age"));
+		this.setSleeping(nbttagcompound.getBoolean("Sleep"));
 	}
 
 	public int getAge()
@@ -224,6 +244,9 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 
 		super.onLivingUpdate();
 
+		if (this.getLeashed() && this.getSleeping())
+			this.setSleeping(false);
+
 		if (this.getAge() == 0) {
 			this.setAge(1);
 		}
@@ -235,7 +258,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 
 		this.fallDistance = 0;
 
-		if (!this.world.isRemote && !this.isChild() && AnimaniaConfig.drops.chickensDropFeathers && !this.isChickenJockey() && --this.featherTimer <= 0)
+		if (!this.world.isRemote && !this.isChild() && AnimaniaConfig.gameRules.chickensDropFeathers && !this.isChickenJockey() && --this.featherTimer <= 0)
 		{
 			this.playSound(ModSoundEvents.chickenCluck2, 0.5F, (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F + 1.0F);
 			this.dropItem(Items.FEATHER, 1);
@@ -302,7 +325,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 			{
 				this.happyTimer = 60;
 
-				if (!this.getFed() && !this.getWatered() && AnimaniaConfig.gameRules.showUnhappyParticles)
+				if (!this.getFed() && !this.getWatered() && !this.getSleeping() && AnimaniaConfig.gameRules.showUnhappyParticles)
 				{
 					double d = this.rand.nextGaussian() * 0.001D;
 					double d1 = this.rand.nextGaussian() * 0.001D;
@@ -357,6 +380,43 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 			this.dataManager.set(EntityAnimaniaChicken.WATERED, Boolean.valueOf(false));
 	}
 
+	public boolean getSleeping()
+	{
+		try {
+			return (this.getBoolFromDataManager(SLEEPING));
+		}
+		catch (Exception e) {
+			return false;
+		}
+	}
+
+	public void setSleeping(boolean flag)
+	{
+		if (flag)
+		{
+			this.dataManager.set(EntityAnimaniaChicken.SLEEPING, Boolean.valueOf(true));
+		}
+		else
+		{
+			this.dataManager.set(EntityAnimaniaChicken.SLEEPING, Boolean.valueOf(false));
+		}
+	}
+
+	public boolean getHandFed()
+	{
+		try {
+			return (this.getBoolFromDataManager(HANDFED));
+		}
+		catch (Exception e) {
+			return false;
+		}
+	}
+
+	public void setHandFed(boolean handfed)
+	{
+		this.dataManager.set(EntityAnimaniaChicken.HANDFED, Boolean.valueOf(handfed));
+	}
+
 	protected void fall(float p_70069_1_)
 	{
 	}
@@ -379,8 +439,7 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		else
 			num = 24;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.chickenCluck1;
@@ -412,6 +471,15 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 	protected void playStepSound(BlockPos pos, Block blockIn)
 	{
 		this.playSound(SoundEvents.ENTITY_CHICKEN_STEP, 0.10F, 1.4F);
+	}
+
+	@Override
+	public void playSound(SoundEvent soundIn, float volume, float pitch)
+	{
+		if (!this.isSilent() && !this.getSleeping())
+		{
+			this.world.playSound((EntityPlayer)null, this.posX, this.posY, this.posZ, soundIn, this.getSoundCategory(), volume, pitch);
+		}
 	}
 
 	@Override
@@ -463,96 +531,6 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 	public EntityChicken createChild(EntityAgeable ageable)
 	{
 		return null;
-	}
-
-	@Override
-	protected Item getDropItem()
-	{
-		return Items.FEATHER;
-	}
-
-	@Override
-	protected void dropLoot(boolean wasRecentlyHit, int lootingModifier, DamageSource source)
-	{
-		this.dropFewItems(wasRecentlyHit, lootingModifier);
-		this.dropEquipment(wasRecentlyHit, lootingModifier);
-	}
-
-	@Override
-	protected void dropFewItems(boolean hit, int lootlevel)
-	{
-		int happyDrops = 0;
-
-		if (this.getWatered())
-			happyDrops++;
-		if (this.getFed())
-			happyDrops++;
-
-		ItemStack dropItem;
-
-		if (AnimaniaConfig.drops.customMobDrops)
-		{
-			String drop = AnimaniaConfig.drops.chickenDrop;
-			dropItem = AnimaniaHelper.getItem(drop);
-			if (this.isBurning() && drop.equals(this.dropRaw.getRegistryName().toString()))
-			{
-				drop = this.dropCooked.getRegistryName().toString();
-				dropItem = AnimaniaHelper.getItem(drop);
-			}
-		}
-		else
-		{
-			if (AnimaniaConfig.drops.oldMeatDrops)
-			{
-				dropItem = new ItemStack(this.oldDropRaw, 1);
-				if (this.isBurning())
-					dropItem = new ItemStack(this.oldDropCooked, 1);
-			}
-			else
-			{
-				dropItem = new ItemStack(this.dropRaw, 1);
-				if (this.isBurning())
-					dropItem = new ItemStack(this.dropCooked, 1);
-			}
-		}
-
-		ItemStack dropItem2;
-		String drop2 = AnimaniaConfig.drops.chickenDrop2;
-		dropItem2 = AnimaniaHelper.getItem(drop2);
-
-		if (happyDrops == 2)
-		{
-			if (dropItem != null) {
-				dropItem.setCount(1 + lootlevel);
-				EntityItem entityitem = new EntityItem(this.world, this.posX + 0.5D, this.posY + 0.5D, this.posZ + 0.5D, dropItem);
-				world.spawnEntity(entityitem);
-			}
-			if (dropItem2 != null) {
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.chickenDrop2Amount + lootlevel);
-			}
-		}
-		else if (happyDrops == 1)
-		{
-			if (this.isBurning())
-			{
-				this.dropItem(Items.COOKED_CHICKEN, 1 + lootlevel);
-				if (dropItem2 != null) {
-					this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.chickenDrop2Amount + lootlevel);
-				}
-			}
-			else
-			{
-				this.dropItem(Items.CHICKEN, 1 + lootlevel);
-				if (dropItem2 != null) {
-					this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.chickenDrop2Amount + lootlevel);
-				}
-			}
-		}
-		else if (happyDrops == 0) {
-			if (dropItem2 != null) {
-				this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.chickenDrop2Amount + lootlevel);
-			}
-		}
 	}
 
 	@Override
@@ -661,6 +639,48 @@ public class EntityAnimaniaChicken extends EntityChicken implements ISpawnable, 
 		catch (Exception e) {
 			return Optional.absent();
 		}
+	}
+	
+	@Override
+	public int getBlinkTimer()
+	{
+		return blinkTimer;
+	}
+
+	@Override
+	public Set<Item> getFoodItems()
+	{
+		return TEMPTATION_ITEMS;
+	}
+
+	@Override
+	public void setSleepingPos(BlockPos pos)
+	{
+		
+	}
+
+	@Override
+	public BlockPos getSleepingPos()
+	{
+		return null;
+	}
+	
+	@Override
+	public Class[] getFoodBlocks()
+	{
+		return new Class[]{BlockSeeds.class};
+	}
+
+	@Override
+	public Float getSleepTimer()
+	{
+		return -100f;
+	}
+
+	@Override
+	public void setSleepTimer(Float timer)
+	{
+		
 	}
 
 }

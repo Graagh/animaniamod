@@ -1,17 +1,9 @@
 package com.animania.common.entities.rodents.rabbits;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.helper.AnimaniaHelper;
-import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
-import com.animania.config.AnimaniaConfig;
-import com.google.common.base.Optional;
 
 import mcjty.theoneprobe.api.IProbeHitEntityData;
 import mcjty.theoneprobe.api.IProbeInfo;
@@ -44,7 +36,15 @@ import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfoProviderMateable
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IMateable;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.helper.AnimaniaHelper;
+import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
+import com.animania.config.AnimaniaConfig;
+
+public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfoProviderMateable, IMateable
 {
 
 	public int dryTimerDoe;
@@ -57,7 +57,9 @@ public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfo
 	public EntityRabbitDoeBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.7F, 0.6F);
+		this.setSize(0.7F, 0.6F); 
+		this.width = 0.7F;
+		this.height = 0.6F;
 		this.stepHeight = 1.1F;
 		this.mateable = true;
 		this.gender = EntityGender.FEMALE;
@@ -251,8 +253,7 @@ public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfo
 		else
 			num = 32;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.rabbit1;
@@ -270,25 +271,13 @@ public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfo
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.rabbitHurt1;
-		else
-			return ModSoundEvents.rabbitHurt2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.rabbitHurt1 : ModSoundEvents.rabbitHurt2;
 	}
 
 	@Override
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.rabbitHurt1;
-		else
-			return ModSoundEvents.rabbitHurt2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.rabbitHurt1 : ModSoundEvents.rabbitHurt2;
 	}
 
 	@Override
@@ -302,7 +291,7 @@ public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfo
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume(), this.getSoundPitch());
 	}
 
@@ -363,6 +352,10 @@ public class EntityRabbitDoeBase extends EntityAnimaniaRabbit implements TOPInfo
 			gestationTimer--;
 			this.setGestation(gestationTimer);
 
+			if (gestationTimer < 200 && this.getSleeping()) {
+				this.setSleeping(false);
+			}
+			
 			if (gestationTimer == 0)
 			{
 

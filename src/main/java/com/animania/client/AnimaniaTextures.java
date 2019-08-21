@@ -1,15 +1,19 @@
 package com.animania.client;
 
+import javax.annotation.Nonnull;
+
 import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
 import com.animania.common.blocks.IMetaBlockName;
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.EntityGender;
 import com.animania.common.handler.BlockHandler;
 import com.animania.common.handler.ItemHandler;
 import com.animania.common.items.ItemEntityEgg;
+import com.animania.common.items.ItemEntityEggAnimated;
 import com.animania.config.AnimaniaConfig;
 
 import net.minecraft.block.Block;
+import net.minecraft.client.renderer.ItemMeshDefinition;
 import net.minecraft.client.renderer.block.model.ModelBakery;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.EnumDyeColor;
@@ -18,7 +22,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 public class AnimaniaTextures
 {
@@ -58,56 +61,22 @@ public class AnimaniaTextures
 		register(ItemHandler.hamsterBallClear);
 		register(ItemHandler.wheel);
 		register(ItemHandler.milkBottle);
+		register(ItemHandler.honeyJar);
+		register(ItemHandler.animaniaManual);
 
 		registerColored(ItemHandler.hamsterBallColored, "hamster_ball");
 
-		// Beef
-		register(ItemHandler.rawAngusBeef);
-		register(ItemHandler.rawHerefordBeef);
-		register(ItemHandler.rawLonghornBeef);
-
-		register(ItemHandler.cookedAngusRoast);
-		register(ItemHandler.cookedHerefordRoast);
-		register(ItemHandler.cookedLonghornRoast);
-
-		register(ItemHandler.rawAngusSteak);
-		register(ItemHandler.rawHerefordSteak);
-		register(ItemHandler.rawLonghornSteak);
-
-		register(ItemHandler.cookedAngusSteak);
-		register(ItemHandler.cookedHerefordSteak);
-		register(ItemHandler.cookedLonghornSteak);
 
 		// Horse
 		register(ItemHandler.rawHorse);
 		register(ItemHandler.cookedHorse);
-		
+
 		// Beef Generics
 		register(ItemHandler.rawPrimeBeef);
 		register(ItemHandler.cookedPrimeBeef);
 		register(ItemHandler.rawPrimeSteak);
 		register(ItemHandler.cookedPrimeSteak);
 
-		// Pork
-		register(ItemHandler.rawLargeBlackPork);
-		register(ItemHandler.rawDurocPork);
-		register(ItemHandler.rawOldSpotPork);
-		register(ItemHandler.rawHampshirePork);
-
-		register(ItemHandler.rawLargeBlackBacon);
-		register(ItemHandler.rawDurocBacon);
-		register(ItemHandler.rawOldSpotBacon);
-		register(ItemHandler.rawHampshireBacon);
-
-		register(ItemHandler.cookedLargeBlackRoast);
-		register(ItemHandler.cookedDurocRoast);
-		register(ItemHandler.cookedOldSpotRoast);
-		register(ItemHandler.cookedHampshireRoast);
-
-		register(ItemHandler.cookedLargeBlackBacon);
-		register(ItemHandler.cookedDurocBacon);
-		register(ItemHandler.cookedOldSpotBacon);
-		register(ItemHandler.cookedHampshireBacon);
 
 		// Pork Generics
 		register(ItemHandler.rawPrimePork);
@@ -115,16 +84,6 @@ public class AnimaniaTextures
 		register(ItemHandler.rawPrimeBacon);
 		register(ItemHandler.cookedPrimeBacon);
 
-		// Chicken
-		register(ItemHandler.rawOrpingtonChicken);
-		register(ItemHandler.rawPlymouthRockChicken);
-		register(ItemHandler.rawWyandotteChicken);
-		register(ItemHandler.rawRhodeIslandRedChicken);
-
-		register(ItemHandler.cookedOrpingtonChicken);
-		register(ItemHandler.cookedPlymouthRockChicken);
-		register(ItemHandler.cookedWyandotteChicken);
-		register(ItemHandler.cookedRhodeIslandRedChicken);
 
 		// Chicken Generics
 		register(ItemHandler.rawPrimeChicken);
@@ -140,15 +99,21 @@ public class AnimaniaTextures
 		register(ItemHandler.rawPrimeChevon);
 		register(ItemHandler.cookedPrimeChevon);
 
+		// Goats
+		register(ItemHandler.rawPeacock);
+		register(ItemHandler.cookedPeacock);
+		register(ItemHandler.rawPrimePeacock);
+		register(ItemHandler.cookedPrimePeacock);
+
 		// Sheep
-		register(ItemHandler.rawMutton);
-		register(ItemHandler.cookedMutton);
+		register(ItemHandler.rawPrimeMutton);
+		register(ItemHandler.cookedPrimeMutton);
 
 		// Rabbit
-		register(ItemHandler.rawRabbit);
-		register(ItemHandler.cookedRabbit);
+		register(ItemHandler.rawPrimeRabbit);
+		register(ItemHandler.cookedPrimeRabbit);
 
-		//EGGS
+		// EGGS
 		registerEntityEggs();
 		register(ItemHandler.entityeggrandomcow);
 		register(ItemHandler.entityeggrandomchicken);
@@ -160,11 +125,11 @@ public class AnimaniaTextures
 		register(ItemHandler.entityeggrandomrabbit);
 		register(ItemHandler.entityeggrandomsheep);
 
-
 		// Blocks
 		register(Item.getItemFromBlock(BlockHandler.blockMud));
 		register(Item.getItemFromBlock(BlockHandler.blockTrough));
 		register(Item.getItemFromBlock(BlockHandler.blockNest));
+		register(Item.getItemFromBlock(BlockHandler.blockStraw));
 		register(Item.getItemFromBlock(BlockHandler.blockHamsterWheel));
 		register(Item.getItemFromBlock(BlockHandler.blockCheeseFriesian));
 		register(Item.getItemFromBlock(BlockHandler.blockCheeseHolstein));
@@ -172,12 +137,15 @@ public class AnimaniaTextures
 		register(Item.getItemFromBlock(BlockHandler.blockCheeseGoat));
 		register(Item.getItemFromBlock(BlockHandler.blockCheeseSheep));
 		register(Item.getItemFromBlock(BlockHandler.blockSaltLick));
+		register(Item.getItemFromBlock(BlockHandler.blockHive));
+		register(Item.getItemFromBlock(BlockHandler.blockWildHive));
 		regSpecial(BlockHandler.blockAnimaniaWool);
-		if (!AnimaniaConfig.gameRules.disableRollingVehicles) {
+		if (!AnimaniaConfig.gameRules.disableRollingVehicles)
+		{
 			register(ItemHandler.cart);
 			register(ItemHandler.wagon);
+			register(ItemHandler.tiller);
 		}
-
 
 		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockSlop, "slop");
 		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockMilkFriesian, "milk_friesian");
@@ -185,6 +153,7 @@ public class AnimaniaTextures
 		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockMilkJersey, "milk_jersey");
 		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockMilkGoat, "milk_goat");
 		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockMilkSheep, "milk_sheep");
+		Animania.proxy.registerFluidBlockRendering(BlockHandler.blockHoney, "honey");
 
 	}
 
@@ -215,12 +184,12 @@ public class AnimaniaTextures
 
 		block.getSubBlocks(Animania.TabAnimaniaResources, list);
 
-		for(int i = 0; i < list.size(); i++)
+		for (int i = 0; i < list.size(); i++)
 		{
 			ItemStack stack = list.get(i);
 
-			ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), stack.getMetadata(), new ModelResourceLocation(block.getRegistryName().toString() + "_" + ((IMetaBlockName)block).getSpecialName(stack), "inventory"));
-			ModelBakery.registerItemVariants(Item.getItemFromBlock(block), new ResourceLocation(block.getRegistryName().toString() + "_" + ((IMetaBlockName)block).getSpecialName(stack)));
+			ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(block), stack.getMetadata(), new ModelResourceLocation(block.getRegistryName().toString() + "_" + ((IMetaBlockName) block).getSpecialName(stack), "inventory"));
+			ModelBakery.registerItemVariants(Item.getItemFromBlock(block), new ResourceLocation(block.getRegistryName().toString() + "_" + ((IMetaBlockName) block).getSpecialName(stack)));
 
 		}
 
@@ -228,9 +197,9 @@ public class AnimaniaTextures
 
 	public static void registerEntityEggs()
 	{
-		for (Item item : ForgeRegistries.ITEMS.getValues())
+		for (Item item : ItemHandler.entityEggList)
 		{
-			if (item instanceof ItemEntityEgg)
+			if (item instanceof ItemEntityEgg && !(item instanceof ItemEntityEggAnimated))
 			{
 				AnimalContainer animal = ((ItemEntityEgg) item).getAnimal();
 				EntityGender gender = animal.getGender();

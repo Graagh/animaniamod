@@ -1,11 +1,10 @@
 package com.animania.common.blocks;
 
-import java.util.Random;
-
 import com.animania.Animania;
 import com.animania.common.capabilities.CapabilityRefs;
 import com.animania.common.capabilities.ICapabilityPlayer;
 import com.animania.common.entities.rodents.EntityHamster;
+import com.animania.common.handler.BlockHandler;
 import com.animania.common.handler.ItemHandler;
 import com.animania.common.tileentities.TileEntityHamsterWheel;
 import com.animania.compat.top.providers.TOPInfoProvider;
@@ -54,7 +53,7 @@ public class BlockHamsterWheel extends BlockContainer implements TOPInfoProvider
 		super(Material.IRON, MapColor.GRAY);
 		this.setRegistryName(new ResourceLocation(Animania.MODID, this.name));
 		this.setDefaultState(this.blockState.getBaseState().withProperty(FACING, EnumFacing.NORTH));
-		ForgeRegistries.BLOCKS.register(this);
+		BlockHandler.blocks.add(this);
 		this.setUnlocalizedName(Animania.MODID + "_" + this.name);
 		this.setCreativeTab(Animania.TabAnimaniaResources);
 		this.setTickRandomly(true);
@@ -68,12 +67,6 @@ public class BlockHamsterWheel extends BlockContainer implements TOPInfoProvider
 	{
 		return new TileEntityHamsterWheel();
 	}
-
-	// @Override
-	// public boolean isFullyOpaque(IBlockState state)
-	// {
-	// return false;
-	// }
 
 	@Override
 	public boolean isOpaqueCube(IBlockState state)
@@ -120,8 +113,7 @@ public class BlockHamsterWheel extends BlockContainer implements TOPInfoProvider
 						cap.setCarrying(false);
 						cap.setType("");
 						player.swingArm(EnumHand.MAIN_HAND);
-						Random rand = new Random();
-						player.playSound(SoundEvents.ENTITY_ITEM_PICKUP, 1.0F, (rand.nextFloat() - rand.nextFloat()) * 0.2F + 1.0F);
+						player.playSound(SoundEvents.ENTITY_ITEM_PICKUP, 1.0F, (Animania.RANDOM.nextFloat() - Animania.RANDOM.nextFloat()) * 0.2F + 1.0F);
 
 						return true;
 					}
@@ -190,6 +182,7 @@ public class BlockHamsterWheel extends BlockContainer implements TOPInfoProvider
 		return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
 	}
 
+	@Override
 	public void onBlockPlacedBy(World worldIn, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack)
 	{
 		worldIn.setBlockState(pos, state.withProperty(FACING, placer.getHorizontalFacing().getOpposite()), 2);

@@ -1,5 +1,7 @@
 package com.animania.common.helper;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,43 +9,64 @@ import com.animania.Animania;
 import com.animania.common.capabilities.CapabilityRefs;
 import com.animania.common.capabilities.ICapabilityPlayer;
 import com.animania.common.entities.props.EntityCart;
+import com.animania.common.entities.props.EntityTiller;
 import com.animania.common.entities.props.EntityWagon;
+import com.animania.config.AnimaniaConfig;
 import com.animania.network.client.TileEntitySyncPacket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.nbt.JsonToNBT;
 import net.minecraft.nbt.NBTException;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.JsonUtils;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.Biome;
+import net.minecraftforge.common.BiomeDictionary;
+import net.minecraftforge.common.BiomeDictionary.Type;
+import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.common.config.Property;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidActionResult;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.fml.common.versioning.VersionRange;
+import net.minecraftforge.oredict.OreDictionary;
 
 public class AnimaniaHelper
 {
-	
-    private static Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+	private static Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
 	public static ItemStack getItem(String name)
 	{
@@ -81,9 +104,48 @@ public class AnimaniaHelper
 
 	}
 
+	public static Block getBlock(String name)
+	{
+		if (name.contains("#"))
+		{
+			name = name.substring(0, name.indexOf("#"));
+		}
+
+		Block b = Block.getBlockFromName(name);
+
+		if (b == null)
+			return Blocks.AIR;
+
+		return b;
+	}
+
+	public static IBlockState getBlockState(String name)
+	{
+		int meta = 0;
+		if (name.contains("#"))
+		{
+			try
+			{
+				meta = Integer.parseInt(name.substring(name.indexOf("#")).replace("#", ""));
+			}
+			catch (Exception e)
+			{
+			}
+
+			name = name.substring(0, name.indexOf("#"));
+		}
+
+		Block b = Block.getBlockFromName(name);
+
+		if (b == null)
+			return Blocks.AIR.getDefaultState();
+
+		return b.getStateFromMeta(meta);
+	}
+
 	public static void sendTileEntityUpdate(TileEntity tile)
 	{
-		if (tile.getWorld() != null && !tile.getWorld().isRemote)
+		if (tile != null && tile.getWorld() != null && !tile.getWorld().isRemote)
 		{
 			NBTTagCompound compound = new NBTTagCompound();
 			compound = tile.writeToNBT(compound);
@@ -97,53 +159,53 @@ public class AnimaniaHelper
 		}
 
 	}
-	
-	  public static ItemStack getItemStack(JsonObject json)
-	    {
-	        String itemName = JsonUtils.getString(json, "item");
 
-	        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemName));
+	public static ItemStack getItemStack(JsonObject json)
+	{
+		String itemName = JsonUtils.getString(json, "item");
 
-	        if (item == null)
-	            throw new JsonSyntaxException("Unknown item '" + itemName + "'");
+		Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemName));
 
-	        if (item.getHasSubtypes() && !json.has("data"))
-	            throw new JsonParseException("Missing data for item '" + itemName + "'");
+		if (item == null)
+			throw new JsonSyntaxException("Unknown item '" + itemName + "'");
 
-	        if (json.has("nbt"))
-	        {
-	            // Lets hope this works? Needs test
-	            try
-	            {
-	                JsonElement element = json.get("nbt");
-	                NBTTagCompound nbt;
-	                if(element.isJsonObject())
-	                    nbt = JsonToNBT.getTagFromJson(GSON.toJson(element));
-	                else
-	                    nbt = JsonToNBT.getTagFromJson(element.getAsString());
+		if (item.getHasSubtypes() && !json.has("data"))
+			throw new JsonParseException("Missing data for item '" + itemName + "'");
 
-	                NBTTagCompound tmp = new NBTTagCompound();
-	                if (nbt.hasKey("ForgeCaps"))
-	                {
-	                    tmp.setTag("ForgeCaps", nbt.getTag("ForgeCaps"));
-	                    nbt.removeTag("ForgeCaps");
-	                }
+		if (json.has("nbt"))
+		{
+			// Lets hope this works? Needs test
+			try
+			{
+				JsonElement element = json.get("nbt");
+				NBTTagCompound nbt;
+				if (element.isJsonObject())
+					nbt = JsonToNBT.getTagFromJson(GSON.toJson(element));
+				else
+					nbt = JsonToNBT.getTagFromJson(element.getAsString());
 
-	                tmp.setTag("tag", nbt);
-	                tmp.setString("id", itemName);
-	                tmp.setInteger("Count", JsonUtils.getInt(json, "count", 1));
-	                tmp.setInteger("Damage", JsonUtils.getInt(json, "data", 0));
+				NBTTagCompound tmp = new NBTTagCompound();
+				if (nbt.hasKey("ForgeCaps"))
+				{
+					tmp.setTag("ForgeCaps", nbt.getTag("ForgeCaps"));
+					nbt.removeTag("ForgeCaps");
+				}
 
-	                return new ItemStack(tmp);
-	            }
-	            catch (NBTException e)
-	            {
-	                throw new JsonSyntaxException("Invalid NBT Entry: " + e.toString());
-	            }
-	        }
+				tmp.setTag("tag", nbt);
+				tmp.setString("id", itemName);
+				tmp.setInteger("Count", JsonUtils.getInt(json, "count", 1));
+				tmp.setInteger("Damage", JsonUtils.getInt(json, "data", 0));
 
-	        return new ItemStack(item, JsonUtils.getInt(json, "count", 1), JsonUtils.getInt(json, "data", 0));
-	    }
+				return new ItemStack(tmp);
+			}
+			catch (NBTException e)
+			{
+				throw new JsonSyntaxException("Invalid NBT Entry: " + e.toString());
+			}
+		}
+
+		return new ItemStack(item, JsonUtils.getInt(json, "count", 1), JsonUtils.getInt(json, "data", 0));
+	}
 
 	public static void addItem(EntityPlayer player, ItemStack stack)
 	{
@@ -151,32 +213,36 @@ public class AnimaniaHelper
 			player.dropItem(stack, false);
 	}
 
-	
 	public static <T extends EntityLivingBase> List<T> getEntitiesInRange(Class<? extends T> filterEntity, double range, World world, Entity theEntity)
 	{
 		List<T> list = world.<T>getEntitiesWithinAABB(filterEntity, new AxisAlignedBB(theEntity.posX - range, theEntity.posY - range, theEntity.posZ - range, theEntity.posX + range, theEntity.posY + range, theEntity.posZ + range));
 		return list;
 	}
-	
 
 	public static <T extends EntityLivingBase> List<T> getEntitiesInRange(Class<? extends T> filterEntity, double range, World world, BlockPos pos)
 	{
 		List<T> list = world.<T>getEntitiesWithinAABB(filterEntity, new AxisAlignedBB(pos.getX() - range, pos.getY() - range, pos.getZ() - range, pos.getX() + range, pos.getY() + range, pos.getZ() + range));
 		return list;
 	}
-	
+
 	public static <T extends EntityCart> List<T> getCartsInRange(Class<? extends T> filterEntity, double range, World world, Entity theEntity)
 	{
 		List<T> list = world.<T>getEntitiesWithinAABB(filterEntity, new AxisAlignedBB(theEntity.posX - range, theEntity.posY - range, theEntity.posZ - range, theEntity.posX + range, theEntity.posY + range, theEntity.posZ + range));
 		return list;
 	}
-	
+
+	public static <T extends EntityTiller> List<T> getTillersInRange(Class<? extends T> filterEntity, double range, World world, Entity theEntity)
+	{
+		List<T> list = world.<T>getEntitiesWithinAABB(filterEntity, new AxisAlignedBB(theEntity.posX - range, theEntity.posY - range, theEntity.posZ - range, theEntity.posX + range, theEntity.posY + range, theEntity.posZ + range));
+		return list;
+	}
+
 	public static <T extends EntityWagon> List<T> getWagonsInRange(Class<? extends T> filterEntity, double range, World world, Entity theEntity)
 	{
 		List<T> list = world.<T>getEntitiesWithinAABB(filterEntity, new AxisAlignedBB(theEntity.posX - range, theEntity.posY - range, theEntity.posZ - range, theEntity.posX + range, theEntity.posY + range, theEntity.posZ + range));
 		return list;
 	}
-	
+
 	public static RayTraceResult rayTrace(EntityPlayer player, double blockReachDistance)
 	{
 		Vec3d vec3d = player.getPositionEyes(1f);
@@ -189,17 +255,17 @@ public class AnimaniaHelper
 	{
 		return FluidUtil.getFluidContained(stack) != null && FluidUtil.getFluidContained(stack).amount >= 1000 && FluidUtil.getFluidContained(stack).getFluid() == fluid;
 	}
-	
+
 	public static boolean isEmptyFluidContainer(ItemStack stack)
 	{
 		return FluidUtil.getFluidHandler(stack) != null && FluidUtil.getFluidContained(stack) == null;
 	}
-	
+
 	public static boolean isWaterContainer(ItemStack stack)
 	{
 		return hasFluid(stack, FluidRegistry.WATER);
 	}
-	
+
 	public static ItemStack emptyContainer(ItemStack stack)
 	{
 		ItemStack copy = stack.copy();
@@ -218,11 +284,44 @@ public class AnimaniaHelper
 			{
 				list.add(i);
 			}
+			else
+			{
+				NonNullList<ItemStack> stacks = OreDictionary.getOres(name);
+				if(!stacks.isEmpty())
+				{
+					for(ItemStack s : stacks)
+						list.add(s.getItem());
+				}
+			}
 		}
-		
+
 		return list.toArray(new Item[list.size()]);
 	}
-	
+
+	public static ItemStack[] getItemStackArray(String[] names)
+	{
+		ArrayList<ItemStack> list = new ArrayList<ItemStack>();
+		for (String name : names)
+		{
+			ItemStack i = StringParser.getItemStack(name);
+			if (!i.isEmpty())
+			{
+				list.add(i);
+			}
+			else
+			{
+				NonNullList<ItemStack> stacks = OreDictionary.getOres(name);
+				if(!stacks.isEmpty())
+				{
+					for(ItemStack s : stacks)
+						list.add(s);
+				}
+			}
+		}
+
+		return list.toArray(new ItemStack[list.size()]);
+	}
+
 	public static void syncCap(Entity entity, ICapabilityPlayer other)
 	{
 		ICapabilityPlayer cap = entity.getCapability(CapabilityRefs.CAPS, null);
@@ -232,6 +331,221 @@ public class AnimaniaHelper
 		cap.setType(other.getType());
 	}
 
-	
+	public static String getLowerBound(VersionRange range)
+	{
+		if (range == null)
+			return null;
 
+		return range.getLowerBoundString();
+	}
+
+	public static String getUpperBound(VersionRange range)
+	{
+		if (range == null)
+			return null;
+		if (!range.isUnboundedAbove())
+			return range.getRestrictions().get(range.getRestrictions().size() - 1).getUpperBound().getVersionString();
+		return null;
+	}
+
+	public static Type[] getBiomeTypes(String[] types)
+	{
+		Type[] bt = new Type[types.length];
+		for (int i = 0; i < types.length; i++)
+		{
+			String s = types[i].toUpperCase();
+			bt[i] = Type.getType(s);
+		}
+
+		return bt;
+	}
+
+	public static String translateWithFormattingCodes(String s)
+	{
+		String[] split = s.split(" ");
+		String result = s;
+		for (String ss : split)
+		{
+			String stripped = TextFormatting.getTextWithoutFormattingCodes(ss);
+			String translated = I18n.translateToLocal(stripped);
+			result = result.replace(stripped, translated);
+		}
+		return result;
+	}
+
+	public static Object getConfigValue(String configName)
+	{
+
+		List<Configuration> configs = AnimaniaConfig.EventHandler.getConfiguration();
+		for (Configuration config : configs)
+		{
+			if (config != null)
+			{
+				String[] firstSplit = configName.split(",");
+				String[] output = new String[firstSplit.length];
+				boolean doReturn = false;
+				if (firstSplit.length > 1)
+				{
+					for (int i = 0; i < firstSplit.length; i++)
+					{
+						String conf = firstSplit[i];
+						String[] split2 = conf.split(";");
+						if (split2.length > 1)
+						{
+							if (config.hasCategory(split2[0]) && config.getCategory(split2[0]).containsKey(split2[1]))
+							{
+								Property prop = config.getCategory(split2[0]).get(split2[1]);
+								if (prop != null)
+								{
+									output[i] = prop.getString();
+									doReturn = true;
+								}
+							}
+						}
+					}
+					if (doReturn)
+						return output;
+				}
+
+				String[] split = configName.split(";");
+				if (split.length > 1)
+				{
+					if (config.hasCategory(split[0]) && config.getCategory(split[0]).containsKey(split[1]))
+					{
+						Property prop = config.getCategory(split[0]).get(split[1]);
+						if (prop != null)
+						{
+							if (prop.isBooleanList())
+								return prop.getBooleanList();
+							if (prop.isBooleanValue())
+								return prop.getBoolean();
+							if (prop.isDoubleList())
+								return prop.getDoubleList();
+							if (prop.isDoubleValue())
+								return prop.getDouble();
+							if (prop.isIntList())
+								return prop.getIntList();
+							if (prop.isIntValue())
+								return prop.getInt();
+							if (prop.isList())
+								return prop.getStringList();
+							if (prop.isLongValue())
+								return prop.getLong();
+
+							if (prop.getString() != null)
+								return prop.getString();
+						}
+					}
+				}
+			}
+		}
+		return "";
+
+	}
+
+	public static List<IRecipe> getRecipesForOutput(String output)
+	{
+		List<IRecipe> recipes = new ArrayList<IRecipe>();
+
+		String[] split = output.split(",");
+		for (String s : split)
+		{
+			ItemStack stack = StringParser.getItemStack(s);
+			if (stack.isEmpty())
+			{
+				IRecipe re;
+				if ((re = ForgeRegistries.RECIPES.getValue(new ResourceLocation(s))) != null)
+				{
+					recipes.add(re);
+					continue;
+				}
+				continue;
+			}
+
+			stack.setCount(1);
+
+			for (IRecipe r : ForgeRegistries.RECIPES)
+			{
+				ItemStack outputStack = r.getRecipeOutput().copy();
+				outputStack.setCount(1);
+				if (ItemStack.areItemStacksEqual(outputStack, stack))
+				{
+					recipes.add(r);
+				}
+			}
+		}
+
+		return recipes;
+	}
+
+	public static ItemStack[] getItemsForLoottable(ResourceLocation table)
+	{
+		List<ItemStack> stacks = new ArrayList<ItemStack>();
+		
+		table = new ResourceLocation(table.getResourceDomain(), "loot_tables/" + table.getResourcePath() + ".json");
+		
+		try
+		{
+			InputStream stream = Minecraft.getMinecraft().getResourceManager().getResource(table).getInputStream();
+			JsonParser parser = new JsonParser();
+			JsonObject base = (JsonObject) parser.parse(new InputStreamReader(stream));
+			JsonArray pools = base.getAsJsonArray("pools");
+			for(int i = 0; i < pools.size(); i++)
+			{
+				JsonArray entries = pools.get(i).getAsJsonObject().getAsJsonArray("entries");
+				for(int k = 0; k < entries.size(); k++)
+				{
+					String name = entries.get(k).getAsJsonObject().get("name").getAsString();
+					Item item = Item.getByNameOrId(name);
+					if(item != null)
+					{
+						ItemStack stack = new ItemStack(item);
+						if(item == Item.getItemFromBlock(Blocks.WOOL))
+							stack = addTooltipToStack(stack, I18n.translateToLocal("manual.blocks.wool.colored"));
+						stacks.add(stack);
+					}
+				}
+			}
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+		return stacks.toArray(new ItemStack[stacks.size()]);
+	}
+
+	public static ItemStack addTooltipToStack(ItemStack stack, String tooltip)
+	{
+		NBTTagCompound tag = stack.hasTagCompound() ? stack.getTagCompound() : new NBTTagCompound();
+		NBTTagCompound display = new NBTTagCompound();
+		NBTTagList lore = new NBTTagList();
+		lore.appendTag(new NBTTagString(TextFormatting.GRAY + tooltip));
+		display.setTag("Lore", lore);
+		tag.setTag("display", display);
+		stack.setTagCompound(tag);
+		return stack;
+	}
+	
+	public static ResourceLocation[] getResourceLocations(String... strings)
+	{
+		ResourceLocation[] res = new ResourceLocation[strings.length];
+		for(int i = 0; i < strings.length; i++)
+		{
+			res[i] = new ResourceLocation(strings[i]);
+		}
+		
+		return res;
+	}
+	
+	public static boolean hasBiomeType(Biome biome, Type... types)
+	{		
+		for(Type t : types)
+		{
+			if(BiomeDictionary.hasType(biome, t))
+				return true;
+		}
+		
+		return false;
+	}
 }

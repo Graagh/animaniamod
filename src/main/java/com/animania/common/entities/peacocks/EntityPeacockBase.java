@@ -1,6 +1,6 @@
 package com.animania.common.entities.peacocks;
 
-import com.animania.common.entities.EntityGender;
+import com.animania.api.data.EntityGender;
 import com.animania.common.handler.ItemHandler;
 
 import net.minecraft.entity.item.EntityItem;
@@ -16,7 +16,9 @@ public class EntityPeacockBase extends EntityAnimaniaPeacock
 	public EntityPeacockBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(0.8F, 1.6F);
+		this.setSize(0.8F, 1.6F); 
+		this.width = 0.8F;
+		this.height = 1.6F;
 		this.gender = EntityGender.MALE;
 		
 	}
@@ -26,7 +28,7 @@ public class EntityPeacockBase extends EntityAnimaniaPeacock
 	{
 		SoundEvent soundevent = this.getAmbientSound();
 
-		if (soundevent != null)
+		if (soundevent != null && !this.getSleeping())
 			this.playSound(soundevent, this.getSoundVolume() - .8F, this.getSoundPitch());
 	}
 	

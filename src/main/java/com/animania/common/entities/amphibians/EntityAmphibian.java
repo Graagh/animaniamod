@@ -1,16 +1,5 @@
 package com.animania.common.entities.amphibians;
 
-import java.util.List;
-import java.util.Random;
-
-import javax.annotation.Nullable;
-
-import com.animania.common.entities.AnimaniaAnimal;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.ISpawnable;
-import com.animania.common.entities.cows.EntityBullBase;
-import com.animania.common.entities.cows.EntityCalfBase;
-
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.IEntityLivingData;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -21,7 +10,6 @@ import net.minecraft.entity.ai.EntityAIWanderAvoidWater;
 import net.minecraft.entity.ai.EntityAIWatchClosest;
 import net.minecraft.entity.ai.EntityJumpHelper;
 import net.minecraft.entity.ai.EntityMoveHelper;
-import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
@@ -37,12 +25,19 @@ import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityAmphibian extends EntityAnimal implements ISpawnable, AnimaniaAnimal
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IAnimaniaAnimal;
+import com.animania.api.interfaces.IGendered;
+import com.animania.api.interfaces.ISpawnable;
+import com.animania.common.entities.chickens.EntityAnimaniaChicken;
+import com.animania.common.entities.peacocks.EntityAnimaniaPeacock;
+
+public class EntityAmphibian extends EntityAnimal implements ISpawnable, IAnimaniaAnimal, IGendered
 {
 	protected static final DataParameter<Integer> AGE = EntityDataManager.<Integer>createKey(EntityAmphibian.class, DataSerializers.VARINT);
 	private int     jumpTicks;
@@ -65,7 +60,9 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 	 */
 	public EntityAmphibian(World worldIn, boolean canEntityJumpIn) {
 		this(worldIn);
-		this.setSize(0.3F, 0.3F);
+		this.setSize(0.3F, 0.3F); 
+		this.width = 0.3F;
+		this.height = 0.3F;
 		this.setMovementSpeed(0.0D);
 		this.jumpHelper = new EntityAmphibian.FrogJumpHelper(this);
 		this.moveHelper = new EntityAmphibian.FrogMoveHelper(this);
@@ -78,28 +75,30 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 		super.entityInit();
 		this.dataManager.register(EntityAmphibian.AGE, Integer.valueOf(0));
 	}
-	
+
 	@Override
 	protected boolean canDespawn()
 	{
 		return false;
 	}
-	
+
 	@Override
 	public void setPosition(double x, double y, double z)
 	{
 		super.setPosition(x, y, z);
 	}
-	
+
 	@Override
 	protected void initEntityAI() {
 		this.tasks.addTask(1, new EntityAISwimming(this));
 		this.tasks.addTask(1, new EntityAmphibian.AIPanic(this, 2.2D));
 		if (!this.getCustomNameTag().equals("Pepe")) {
-			this.tasks.addTask(2, new EntityAIAvoidEntity(this, EntityPlayer.class, 6.0F, 1.5D, 1.5D));
+			this.tasks.addTask(2, new EntityAIAvoidEntity<EntityPlayer>(this, EntityPlayer.class, 6.0F, 1.5D, 1.5D));
 		}
 		this.tasks.addTask(3, new EntityAIWanderAvoidWater(this, 0.6D));
 		this.tasks.addTask(4, new EntityAIWatchClosest(this, EntityPlayer.class, 10.0F));
+		this.tasks.addTask(5, new EntityAIAvoidEntity<EntityAnimaniaPeacock>(this, EntityAnimaniaPeacock.class, 10.0F, 3.0D, 3.5D));
+		this.tasks.addTask(6, new EntityAIAvoidEntity<EntityAnimaniaChicken>(this, EntityAnimaniaChicken.class, 10.0F, 3.0D, 3.5D));
 	}
 
 	@Override
@@ -120,7 +119,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 			return 0.5F;
 	}
 
-	
+
 	public int getAge()
 	{
 		return this.dataManager.get(EntityAmphibian.AGE).intValue();
@@ -131,7 +130,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 		this.dataManager.set(EntityAmphibian.AGE, Integer.valueOf(age));
 	}
 
-	
+
 	@Override
 	protected void jump() {
 		super.jump();
@@ -240,6 +239,16 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 			this.setAge(1);
 		}
 		
+	
+		
+		if (this.getCustomNameTag().equals("Pepe") && this.getMaxHealth() != 20.0D)
+		{
+			this.initEntityAI();
+			this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(20.0D);
+			this.setHealth(20);
+		}
+
+		
 		if (this.canEntityJump)
 			if (this.jumpTicks != this.jumpDuration)
 				++this.jumpTicks;
@@ -286,7 +295,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 	protected SoundEvent getHurtSound(DamageSource source) {
 		return null;
 	}
-	
+
 	@Override
 	protected SoundEvent getDeathSound() {
 		return null;
@@ -306,7 +315,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 	public EntityAmphibian createChild(EntityAgeable ageable) {
 		return null;
 	}
-	
+
 	@Override
 	public void writeEntityToNBT(NBTTagCompound compound)
 	{
@@ -418,8 +427,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 			super.setMoveTo(x, y, z, speedIn);
 
 			if (speedIn > 0.0D) {
-				Random rand = new Random();
-				float distance = rand.nextFloat() / 25;
+				float distance = Animania.RANDOM.nextFloat() / 25;
 				this.nextJumpSpeed = speedIn + distance;
 			}
 		}
@@ -439,7 +447,7 @@ public class EntityAmphibian extends EntityAnimal implements ISpawnable, Animani
 	{
 		return null;
 	}
-	
+
 	@Override
 	public ItemStack getPickedResult(RayTraceResult target)
 	{

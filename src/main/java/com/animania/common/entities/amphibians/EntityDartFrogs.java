@@ -1,12 +1,11 @@
 package com.animania.common.entities.amphibians;
 
-import java.util.Random;
-
 import javax.annotation.Nullable;
 
+import com.animania.Animania;
+import com.animania.api.data.AnimalContainer;
+import com.animania.api.data.EntityGender;
 import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.AnimalContainer;
-import com.animania.common.entities.EntityGender;
 import com.animania.common.helper.AnimaniaHelper;
 import com.animania.common.items.ItemEntityEgg;
 import com.animania.config.AnimaniaConfig;
@@ -31,6 +30,7 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.potion.PotionUtils;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.DifficultyInstance;
@@ -148,6 +148,12 @@ public class EntityDartFrogs extends EntityAmphibian
 		this.alterSquishAmount();
 
 	}
+	
+	@Override
+	protected ResourceLocation getLootTable()
+	{
+		return new ResourceLocation(Animania.MODID, "dart_frog");
+	}
 
 	/**
 	 * Called only once on an entity when first time spawned, via egg, mob
@@ -167,8 +173,7 @@ public class EntityDartFrogs extends EntityAmphibian
 	@Override
 	protected SoundEvent getAmbientSound() {
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(5);
+		int chooser = Animania.RANDOM.nextInt(5);
 
 		if (chooser == 0)
 			return ModSoundEvents.dartfrogLiving1;
@@ -208,72 +213,6 @@ public class EntityDartFrogs extends EntityAmphibian
 	@Override
 	protected float getSoundVolume() {
 		return 0.4F;
-	}
-
-	@Override
-	protected void dropFewItems(boolean hit, int lootlevel) {
-
-		ItemStack dropItem;
-		String drop = AnimaniaConfig.drops.dartFrogDrop;
-		dropItem = AnimaniaHelper.getItem(drop);
-		if (dropItem != null) {
-			dropItem.setCount(1 + lootlevel);
-			EntityItem entityitem = new EntityItem(this.world, this.posX + 0.5D, this.posY + 0.5D, this.posZ + 0.5D, dropItem);
-			world.spawnEntity(entityitem);
-		}
-		
-		ItemStack dropItem2;
-		String drop2 = AnimaniaConfig.drops.dartFrogDrop2;
-		dropItem2 = AnimaniaHelper.getItem(drop2);
-		
-		if (dropItem2 != null) {
-			this.dropItem(dropItem2.getItem(), AnimaniaConfig.drops.dartFrogDrop2Amount + lootlevel);
-		}
-	}
-
-	private ItemStack getItem(String moditem) {
-
-		ItemStack foundStack = null;
-		String item = "";
-		String mod = "";
-		int sepLoc = 0;
-		int metaLoc = 0;
-		boolean metaFlag = false;
-		String metaVal = "";
-
-		sepLoc = moditem.indexOf(":");
-		metaLoc = moditem.indexOf("#");
-
-		if (!moditem.contains(":")) {
-			return new ItemStack(Blocks.AIR, 1);
-		}
-
-		mod = moditem.substring(0, sepLoc);
-
-		if (metaLoc > 0) {
-			item = moditem.substring(sepLoc+1, metaLoc);
-		} else {
-			item = moditem.substring(sepLoc+1, moditem.length());
-		}
-		if (metaLoc > 0) {
-			metaFlag = true;
-			metaVal = moditem.substring(metaLoc+1, moditem.length());
-		}
-
-		Item bob = Item.getByNameOrId(item);
-
-		if (bob != null) {
-
-			if (metaFlag) {
-				foundStack = new ItemStack(bob, 1, Integer.parseInt(metaVal));
-			} else {
-				foundStack = new ItemStack(bob, 1);
-			}
-		} else {
-			foundStack = new ItemStack(Blocks.AIR, 1);
-		}
-
-		return foundStack;
 	}
 	
 	@Override

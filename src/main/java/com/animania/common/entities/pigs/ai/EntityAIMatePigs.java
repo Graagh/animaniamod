@@ -1,9 +1,9 @@
 package com.animania.common.entities.pigs.ai;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
+import com.animania.Animania;
 import com.animania.common.entities.pigs.EntityAnimaniaPig;
 import com.animania.common.entities.pigs.EntityHogBase;
 import com.animania.common.entities.pigs.EntityPigletBase;
@@ -17,22 +17,20 @@ import net.minecraft.world.World;
 
 public class EntityAIMatePigs extends EntityAIBase
 {
-	private final EntityAnimal theAnimal;
-	World                      theWorld;
-	private EntityAnimal       targetMate;
-	int                        courtshipTimer;
-	double                     moveSpeed;
-	private int                delayCounter;
-	private Random			   rand;
+	private final EntityAnimaniaPig 	theAnimal;
+	World                    	  		theWorld;
+	private EntityAnimaniaPig       	targetMate;
+	int                        			courtshipTimer;
+	double                     			moveSpeed;
+	private int                			delayCounter;
 
-	public EntityAIMatePigs(EntityAnimal animal, double speedIn) {
+	public EntityAIMatePigs(EntityAnimaniaPig animal, double speedIn) {
 		this.theAnimal = animal;
 		this.theWorld = animal.world;
 		this.moveSpeed = speedIn;
 		this.setMutexBits(3);
 		this.courtshipTimer = 20;
 		this.delayCounter = 0;
-		this.rand = new Random();
 
 	}
 
@@ -43,7 +41,12 @@ public class EntityAIMatePigs extends EntityAIBase
 
 		//System.out.println(delayCounter);
 
-		if (this.delayCounter > 100) {
+		if (this.delayCounter > AnimaniaConfig.gameRules.ticksBetweenAIFirings) {
+			
+			if (!theAnimal.world.isDaytime() || theAnimal.getSleeping()) {
+				this.delayCounter = 0;
+				return false;
+			}
 
 			if (this.theAnimal instanceof EntityPigletBase || this.theAnimal instanceof EntitySowBase || this.theAnimal.isInWater()) {
 				this.delayCounter = 0;
@@ -75,10 +78,9 @@ public class EntityAIMatePigs extends EntityAIBase
 				}
 			}
 
-			this.targetMate = this.getNearbyMate();
+			this.targetMate = (EntityAnimaniaPig) this.getNearbyMate();
 
-			Random rand = new Random();
-			if (this.targetMate != null && rand.nextInt(20) == 0) {
+			if (this.targetMate != null && Animania.RANDOM.nextInt(20) == 0) {
 				this.delayCounter = 0;
 				this.resetTask();
 				return false;
@@ -112,7 +114,7 @@ public class EntityAIMatePigs extends EntityAIBase
 		if (this.targetMate != null) {
 			EntitySowBase tm = (EntitySowBase) this.targetMate;
 			if (!tm.getPregnant() && tm.getFertile()) {
-				this.targetMate = this.getNearbyMate();
+				this.targetMate = (EntityAnimaniaPig) this.getNearbyMate();
 			} else {
 				this.theAnimal.resetInLove();
 				this.resetTask();
@@ -145,7 +147,8 @@ public class EntityAIMatePigs extends EntityAIBase
 						allowBreeding = false;
 					}
 
-					if (entity.getPersistentID().equals(mateID) && entity.getFertile() && !entity.getPregnant() && allowBreeding) {
+					if (entity.getPersistentID().equals(mateID) && entity.getFertile() && !entity.getSleeping() && !entity.getPregnant() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 
 						this.courtshipTimer--;
 						if (this.courtshipTimer < 0) {
@@ -181,7 +184,8 @@ public class EntityAIMatePigs extends EntityAIBase
 					}
 
 					this.courtshipTimer--;
-					if (entity.getMateUniqueId() == null && this.courtshipTimer < 0 && entity.getFertile() && !entity.getPregnant() && allowBreeding) {
+					if (entity.getMateUniqueId() == null && this.courtshipTimer < 0 && entity.getFertile() && !entity.getSleeping() && !entity.getPregnant() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 						((EntityHogBase) this.theAnimal).setMateUniqueId(entity.getPersistentID());
 						entity.setMateUniqueId(this.theAnimal.getPersistentID());
 						this.theAnimal.setInLove(null);
@@ -192,7 +196,8 @@ public class EntityAIMatePigs extends EntityAIBase
 						entity.setHandFed(false);
 						delayCounter = 0;
 						return (EntityAnimal) entity;
-					} else if (entity.getMateUniqueId() == null && !entity.getPregnant() && entity.getFertile() && allowBreeding) {
+					} else if (entity.getMateUniqueId() == null && !entity.getPregnant() && !entity.getSleeping() && entity.getFertile() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 						k = entities.size();
 						this.theAnimal.setInLove(null);
 						this.theAnimal.getLookHelper().setLookPositionWithEntity(entity, 10.0F, this.theAnimal.getVerticalFaceSpeed());

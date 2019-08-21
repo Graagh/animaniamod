@@ -19,8 +19,6 @@ public class EntityRamDorper extends EntityRamBase
 	{
 		super(worldIn);
 		this.sheepType = SheepType.DORPER;
-		this.dropRaw = ItemHandler.rawMutton;
-		this.dropCooked = ItemHandler.cookedMutton;
 	}
 
 	@Override
@@ -34,7 +32,6 @@ public class EntityRamDorper extends EntityRamBase
 	{
 		return 13552319;
 	}
-
 	
 	@Override
 	public List<ItemStack> onSheared(ItemStack item, IBlockAccess world, BlockPos pos, int fortune) {
@@ -43,9 +40,15 @@ public class EntityRamDorper extends EntityRamBase
 		int i = 1 + this.rand.nextInt(2);
 		
 		List<ItemStack> woolDrops = new ArrayList<ItemStack>();
-		woolDrops.add(new ItemStack((Blocks.WOOL), i));
+		woolDrops.add(new ItemStack((Blocks.WOOL), i, this.getDyeColor().getMetadata()));
 		
 		return woolDrops;
+	}
+	
+	@Override
+	public boolean isDyeable()
+	{
+		return true;
 	}
 	
 }

@@ -1,9 +1,9 @@
 package com.animania.common.entities.rodents.ai;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
+import com.animania.Animania;
 import com.animania.common.entities.pigs.EntityAnimaniaPig;
 import com.animania.common.entities.rodents.rabbits.EntityAnimaniaRabbit;
 import com.animania.common.entities.rodents.rabbits.EntityRabbitBuckBase;
@@ -24,7 +24,6 @@ public class EntityAIMateRabbits extends EntityAIBase
 	int                        courtshipTimer;
 	double                     moveSpeed;
 	private int                delayCounter;
-	private Random			   rand;
 
 	public EntityAIMateRabbits(EntityAnimal animal, double speedIn) {
 		this.theAnimal = animal;
@@ -33,7 +32,6 @@ public class EntityAIMateRabbits extends EntityAIBase
 		this.setMutexBits(3);
 		this.courtshipTimer = 20;
 		this.delayCounter = 0;
-		this.rand = new Random();
 
 	}
 
@@ -79,8 +77,7 @@ public class EntityAIMateRabbits extends EntityAIBase
 
 			this.targetMate = this.getNearbyMate();
 
-			Random rand = new Random();
-			if (this.targetMate != null && rand.nextInt(20) == 0) {
+			if (this.targetMate != null && Animania.RANDOM.nextInt(20) == 0) {
 				this.delayCounter = 0;
 				this.resetTask();
 				return false;
@@ -148,7 +145,8 @@ public class EntityAIMateRabbits extends EntityAIBase
 						allowBreeding = false;
 					}
 
-					if (entity.getPersistentID().equals(mateID) && entity.getFertile() && !entity.getPregnant() && allowBreeding) {
+					if (entity.getPersistentID().equals(mateID) && entity.getFertile() && !entity.getSleeping() && !entity.getPregnant() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 
 						this.courtshipTimer--;
 						if (this.courtshipTimer < 0) {
@@ -184,7 +182,8 @@ public class EntityAIMateRabbits extends EntityAIBase
 					}
 
 					this.courtshipTimer--;
-					if (entity.getMateUniqueId() == null && this.courtshipTimer < 0 && entity.getFertile() && !entity.getPregnant() && allowBreeding) {
+					if (entity.getMateUniqueId() == null && this.courtshipTimer < 0 && entity.getFertile() && !entity.getSleeping() && !entity.getPregnant() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 						((EntityRabbitBuckBase) this.theAnimal).setMateUniqueId(entity.getPersistentID());
 						entity.setMateUniqueId(this.theAnimal.getPersistentID());
 						this.theAnimal.setInLove(null);
@@ -195,7 +194,8 @@ public class EntityAIMateRabbits extends EntityAIBase
 						entity.setHandFed(false);
 						delayCounter = 0;
 						return (EntityAnimal) entity;
-					} else if (entity.getMateUniqueId() == null && !entity.getPregnant() && entity.getFertile() && allowBreeding) {
+					} else if (entity.getMateUniqueId() == null && !entity.getPregnant() && !entity.getSleeping() && entity.getFertile() && allowBreeding && entity.canEntityBeSeen(entity2)) {
+
 						k = entities.size();
 						this.theAnimal.setInLove(null);
 						this.theAnimal.getLookHelper().setLookPositionWithEntity(entity, 10.0F, this.theAnimal.getVerticalFaceSpeed());

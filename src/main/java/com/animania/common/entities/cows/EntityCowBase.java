@@ -1,18 +1,9 @@
 package com.animania.common.entities.cows;
 
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
-
-import com.animania.common.ModSoundEvents;
-import com.animania.common.entities.EntityGender;
-import com.animania.common.entities.cows.ai.EntityAIMateCows;
-import com.animania.common.handler.DamageSourceHandler;
-import com.animania.common.helper.AnimaniaHelper;
-import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
-import com.animania.config.AnimaniaConfig;
 
 import mcjty.theoneprobe.api.IProbeHitEntityData;
 import mcjty.theoneprobe.api.IProbeInfo;
@@ -47,13 +38,22 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.BabyEntitySpawnEvent;
 import net.minecraftforge.fluids.FluidActionResult;
-import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderMateable
+import com.animania.Animania;
+import com.animania.api.data.EntityGender;
+import com.animania.api.interfaces.IMateable;
+import com.animania.common.ModSoundEvents;
+import com.animania.common.entities.cows.ai.EntityAIMateCows;
+import com.animania.common.handler.DamageSourceHandler;
+import com.animania.common.helper.AnimaniaHelper;
+import com.animania.compat.top.providers.entity.TOPInfoProviderMateable;
+import com.animania.config.AnimaniaConfig;
+
+public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderMateable, IMateable
 {
 
 	public int dryTimer;
@@ -66,11 +66,12 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 	public EntityCowBase(World worldIn)
 	{
 		super(worldIn);
-		this.setSize(1.4F, 1.8F);
+		this.setSize(1.4F, 1.8F); 
+		this.width = 1.4F;
+		this.height = 1.8F;
 		this.stepHeight = 1.1F;
 		this.tasks.addTask(5, new EntityAIMateCows(this, 1.0D));
 		this.tasks.addTask(4, new EntityAIAttackMelee(this, 1.2D, false));
-		// this.tasks.addTask(1, new EntityAIPanicCows(this, 2.0D));
 		this.targetTasks.addTask(1, new EntityAIHurtByTarget(this, true, new Class[0]));
 		this.mateable = true;
 		this.gender = EntityGender.FEMALE;
@@ -81,7 +82,11 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 	{
 		super.entityInit();
 		this.dataManager.register(EntityCowBase.PREGNANT, Boolean.valueOf(false));
-		this.dataManager.register(EntityCowBase.HAS_KIDS, Boolean.valueOf(false));
+		if (AnimaniaConfig.gameRules.cowsMilkableAtSpawn) {
+			this.dataManager.register(EntityCowBase.HAS_KIDS, Boolean.valueOf(true));
+		} else {
+			this.dataManager.register(EntityCowBase.HAS_KIDS, Boolean.valueOf(false));
+		}
 		this.dataManager.register(EntityCowBase.FERTILE, Boolean.valueOf(true));
 		this.dataManager.register(EntityCowBase.GESTATION_TIMER, Integer.valueOf(AnimaniaConfig.careAndFeeding.gestationTimer + this.rand.nextInt(200)));
 	}
@@ -122,6 +127,13 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 	@Override
 	public boolean attackEntityAsMob(Entity entityIn)
 	{
+
+		if (this.getSleeping()) {
+			this.setSleeping(false);
+			this.setSleepTimer(0F);
+			this.jump();
+		}
+
 		boolean flag = false;
 		if (this.canEntityBeSeen(entityIn) && this.getDistance(entityIn) <= 2.0F)
 		{
@@ -141,7 +153,9 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 	@Override
 	public void setInLove(EntityPlayer player)
 	{
-		this.world.setEntityState(this, (byte) 18);
+
+		if (!this.getSleeping())
+			this.world.setEntityState(this, (byte) 18);
 	}
 
 	@Override
@@ -295,8 +309,7 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 		else
 			num = 60;
 
-		Random rand = new Random();
-		int chooser = rand.nextInt(num);
+		int chooser = Animania.RANDOM.nextInt(num);
 
 		if (chooser == 0)
 			return ModSoundEvents.moo1;
@@ -322,25 +335,13 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 	@Override
 	protected SoundEvent getHurtSound(DamageSource source)
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.cowHurt1;
-		else
-			return ModSoundEvents.cowHurt2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.cowHurt1 : ModSoundEvents.cowHurt2;
 	}
 
 	@Override
 	protected SoundEvent getDeathSound()
 	{
-		Random rand = new Random();
-		int chooser = rand.nextInt(2);
-
-		if (chooser == 0)
-			return ModSoundEvents.cowDeath1;
-		else
-			return ModSoundEvents.cowDeath2;
+		return Animania.RANDOM.nextBoolean() ? ModSoundEvents.cowDeath1 : ModSoundEvents.cowDeath2;
 	}
 
 	@Override
@@ -404,6 +405,10 @@ public class EntityCowBase extends EntityAnimaniaCow implements TOPInfoProviderM
 			gestationTimer--;
 			this.setGestation(gestationTimer);
 
+			if (gestationTimer < 200 && this.getSleeping()) {
+				this.setSleeping(false);
+			}
+			
 			if (gestationTimer == 0)
 			{
 
